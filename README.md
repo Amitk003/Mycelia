@@ -46,13 +46,11 @@ Open the app in multiple browser tabs. Watch the cells discover each other and s
 
 ```
 mycelia/
-  src/             - Frontend code (TypeScript)
+  src/               - Frontend code (TypeScript)
   crates/
-    hypha-core/    - Rust core: genome, mutation, crossover
-    sensor-field/  - Rust: sensor processing
-    evolution/     - Rust: evolutionary engine
-  signaling-server/ - Node.js WebSocket server for peer discovery
-  docs/            - Project documentation
+    mycelia-core/    - Rust core: genome, sensor processing, evolution
+  signaling-server/   - Node.js WebSocket server for peer discovery
+  docs/              - Project documentation
 ```
 
 ## License
