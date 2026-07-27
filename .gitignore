@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+target/
+
+# Build output
+dist/
+pkg/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific - do not push
+ROADMAP.md
+memory/
+
+# Logs
+*.log
+
+# Rust
+Cargo.lock
