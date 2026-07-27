@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { resolve } from "path";
 
 export default defineConfig({
   build: {
@@ -8,11 +9,19 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+    fs: {
+      allow: [".", "pkg"],
+    },
   },
   worker: {
     format: "es",
   },
+  resolve: {
+    alias: {
+      "@pkg": resolve(__dirname, "./pkg"),
+    },
+  },
   optimizeDeps: {
-    exclude: ["@mycelia/hypha-core", "@mycelia/sensor-field", "@mycelia/evolution"],
+    exclude: ["mycelia-core"],
   },
 });

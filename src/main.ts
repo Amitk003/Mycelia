@@ -1,4 +1,4 @@
-const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:8080";
+const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname || "localhost"}:8080`;
 const appElement = document.getElementById("app");
 
 function renderUI() {
@@ -14,7 +14,10 @@ function renderUI() {
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
         <div style="background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
           <h2 style="color: #a7f3d0; margin-top: 0;">Cell State</h2>
-          <div id="cell-status">Initializing cell environment...</div>
+          <div id="cell-status">Initializing WASM core...</div>
+          <div style="margin-top: 1rem; text-align: center;">
+            <canvas id="hypha-canvas" width="280" height="200" style="background: #030712; border-radius: 6px; border: 1px solid #1e293b;"></canvas>
+          </div>
         </div>
 
         <div style="background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
@@ -24,11 +27,45 @@ function renderUI() {
       </div>
 
       <div id="genome-stats" style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
-        <h2 style="color: #fbbf24; margin-top: 0;">Genome</h2>
+        <h2 style="color: #fbbf24; margin-top: 0;">Genome Telemetry & Real-Time Evolution</h2>
         <pre id="genome-output" style="color: #94a3b8; font-size: 0.85rem; overflow-x: auto;">Waiting for WASM init...</pre>
       </div>
     </div>
   `;
+}
+
+function drawOrganism(canvas: HTMLCanvasElement, generation: number, geneCount: number) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  ctx.fillStyle = "rgba(3, 7, 18, 0.2)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const numBranches = Math.min(geneCount, 12);
+  const time = Date.now() * 0.002;
+
+  ctx.lineWidth = 2;
+  for (let i = 0; i < numBranches; i++) {
+    const angle = (i / numBranches) * Math.PI * 2 + Math.sin(time + i) * 0.1;
+    const length = 40 + Math.sin(time + generation * 0.1 + i) * 20;
+    const endX = centerX + Math.cos(angle) * length;
+    const endY = centerY + Math.sin(angle) * length;
+
+    const hue = (160 + i * 20 + generation * 2) % 360;
+    ctx.strokeStyle = `hsl(${hue}, 80%, 60%)`;
+
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+
+    ctx.fillStyle = `hsl(${hue}, 90%, 70%)`;
+    ctx.beginPath();
+    ctx.arc(endX, endY, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 async function initWasm() {
@@ -46,21 +83,6 @@ async function initWasm() {
         <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">${result} v${version}</p>
         <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">Genes: ${genome.gene_count()}, Generation: ${genome.generation()}</p>
       `;
-    }
-
-    const genomeOutput = document.getElementById("genome-output");
-    if (genomeOutput) {
-      genomeOutput.textContent = JSON.stringify(
-        {
-          genes: genome.gene_count(),
-          generation: genome.generation(),
-          fitness: genome.fitness(),
-          species: genome.species_tag(),
-          sensorChannels: sensorField.to_array(),
-        },
-        null,
-        2
-      );
     }
 
     return { wasm, genome, sensorField };
@@ -91,12 +113,10 @@ function connectSignaling() {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === "welcome") {
-          meshStatus.innerHTML = `
-            <p style="color: #4ade80; margin: 0;">Connected as ${msg.peerId}</p>
-          `;
+          meshStatus.innerHTML = `<p style="color: #4ade80; margin: 0;">Connected as ${msg.peerId}</p>`;
         }
       } catch {
-        // ignore non-JSON messages
+        // ignore non-json messages
       }
     };
 
@@ -122,12 +142,42 @@ async function main() {
   const wasmResult = await initWasm();
   connectSignaling();
 
+  const canvas = document.getElementById("hypha-canvas") as HTMLCanvasElement;
+
   setInterval(() => {
-    const genomeOutput = document.getElementById("genome-output");
-    if (genomeOutput && wasmResult) {
-      wasmResult.genome.set_generation(wasmResult.genome.generation() + 1);
+    if (wasmResult) {
+      // Execute WASM mutation in Rust core
+      wasmResult.wasm.mutate_genome(wasmResult.genome);
+
+      const cellStatus = document.getElementById("cell-status");
+      if (cellStatus) {
+        cellStatus.innerHTML = `
+          <p style="color: #4ade80; margin: 0 0 0.25rem 0;">Cell active</p>
+          <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">mycelia-core ready v${wasmResult.wasm.version()}</p>
+          <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">Genes: ${wasmResult.genome.gene_count()}, Generation: ${wasmResult.genome.generation()}</p>
+        `;
+      }
+
+      const genomeOutput = document.getElementById("genome-output");
+      if (genomeOutput) {
+        genomeOutput.textContent = JSON.stringify(
+          {
+            genes: wasmResult.genome.gene_count(),
+            generation: wasmResult.genome.generation(),
+            fitness: wasmResult.genome.fitness(),
+            species: wasmResult.genome.species_tag(),
+            sensorChannels: wasmResult.sensorField.to_array(),
+          },
+          null,
+          2
+        );
+      }
+
+      if (canvas) {
+        drawOrganism(canvas, wasmResult.genome.generation(), wasmResult.genome.gene_count());
+      }
     }
-  }, 5000);
+  }, 2000);
 }
 
 main().catch((err) => console.error("Mycelia failed to start:", err));
