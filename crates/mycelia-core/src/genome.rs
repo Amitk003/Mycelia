@@ -51,7 +51,10 @@ impl Genome {
             });
         }
 
-        let birth_timestamp = js_sys::Date::now() / 1000.0;
+        let birth_timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
 
         Genome {
             genes,
