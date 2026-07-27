@@ -51,14 +51,13 @@ impl Genome {
             });
         }
 
+        let birth_timestamp = js_sys::Date::now() / 1000.0;
+
         Genome {
             genes,
             generation: 0,
             parent_ids: Vec::new(),
-            birth_timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs_f64(),
+            birth_timestamp,
             fitness: 0.0,
             species_tag: "prototype".to_string(),
         }
@@ -90,6 +89,10 @@ impl Genome {
 
     pub fn set_species_tag(&mut self, tag: String) {
         self.species_tag = tag;
+    }
+
+    pub fn birth_timestamp(&self) -> f64 {
+        self.birth_timestamp
     }
 
     pub fn get_gene_data(&self, index: usize) -> Vec<f32> {

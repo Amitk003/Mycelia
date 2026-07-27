@@ -12,27 +12,18 @@ pub fn mutate_genome(genome: &mut Genome) {
     let mut rng = rand::thread_rng();
     let base_rate = 0.05;
 
-    for i in 0..genome.gene_count() {
-        let gene_data = genome.get_gene_data(i);
-        if gene_data.is_empty() {
-            continue;
-        }
-
-        let mut new_data: Vec<f32> = Vec::with_capacity(gene_data.len());
-        for &val in &gene_data {
+    for gene in genome.genes_mut() {
+        for val in &mut gene.data {
             if rng.r#gen::<f32>() < base_rate {
                 let mutation_type = rng.gen_range(0..3);
                 let mutated = match mutation_type {
-                    0 => val + rng.gen_range(-0.2..0.2),
-                    1 => val * rng.gen_range(0.8..1.2),
+                    0 => *val + rng.gen_range(-0.2..0.2),
+                    1 => *val * rng.gen_range(0.8..1.2),
                     _ => rng.gen_range(-1.0..1.0),
                 };
-                new_data.push(mutated.clamp(-1.0, 1.0));
-            } else {
-                new_data.push(val);
+                *val = mutated.clamp(-1.0, 1.0);
             }
         }
-        genome.set_gene_data(i, new_data);
     }
 
     genome.set_generation(genome.generation() + 1);
@@ -47,19 +38,21 @@ pub fn crossover(parent_a: &Genome, parent_b: &Genome) -> Genome {
     let min_genes = count_a.min(count_b);
 
     for i in 0..min_genes {
-        let data_a = parent_a.get_gene_data(i);
-        let data_b = parent_b.get_gene_data(i);
+        let data_a = &parent_a.genes()[i].data;
+        let data_b = &parent_b.genes()[i].data;
         let min_len = data_a.len().min(data_b.len());
 
-        let mut new_data: Vec<f32> = Vec::with_capacity(min_len);
+        let child_gene_data = &mut child.genes_mut()[i].data;
+        child_gene_data.clear();
+        child_gene_data.reserve(min_len);
+
         for j in 0..min_len {
             if rng.r#gen::<bool>() {
-                new_data.push(data_a[j]);
+                child_gene_data.push(data_a[j]);
             } else {
-                new_data.push(data_b[j]);
+                child_gene_data.push(data_b[j]);
             }
         }
-        child.set_gene_data(i, new_data);
     }
 
     child.set_generation(parent_a.generation().max(parent_b.generation()) + 1);
