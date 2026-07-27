@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/hypha-core",
+    "crates/sensor-field",
+    "crates/evolution",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
