@@ -55,7 +55,10 @@ impl Genome {
             genes,
             generation: 0,
             parent_ids: Vec::new(),
-            birth_timestamp: js_sys::Date::now(),
+            birth_timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs_f64(),
             fitness: 0.0,
             species_tag: "prototype".to_string(),
         }
@@ -69,8 +72,8 @@ impl Genome {
         self.generation
     }
 
-    pub fn set_generation(&mut self, gen: u32) {
-        self.generation = gen;
+    pub fn set_generation(&mut self, new_gen: u32) {
+        self.generation = new_gen;
     }
 
     pub fn fitness(&self) -> f32 {

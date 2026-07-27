@@ -20,7 +20,7 @@ pub fn mutate_genome(genome: &mut Genome) {
 
         let mut new_data: Vec<f32> = Vec::with_capacity(gene_data.len());
         for &val in &gene_data {
-            if rng.gen::<f32>() < base_rate {
+            if rng.r#gen::<f32>() < base_rate {
                 let mutation_type = rng.gen_range(0..3);
                 let mutated = match mutation_type {
                     0 => val + rng.gen_range(-0.2..0.2),
@@ -53,7 +53,7 @@ pub fn crossover(parent_a: &Genome, parent_b: &Genome) -> Genome {
 
         let mut new_data: Vec<f32> = Vec::with_capacity(min_len);
         for j in 0..min_len {
-            if rng.gen::<bool>() {
+            if rng.r#gen::<bool>() {
                 new_data.push(data_a[j]);
             } else {
                 new_data.push(data_b[j]);
@@ -105,7 +105,7 @@ pub fn mutate_value(val: f32, rate: f32) -> f32 {
     let mut rng = rand::thread_rng();
     let clamped_rate = rate.clamp(MIN_MUTATION_RATE, MAX_MUTATION_RATE);
 
-    if rng.gen::<f32>() < clamped_rate {
+    if rng.r#gen::<f32>() < clamped_rate {
         let mutation_type = rng.gen_range(0..3);
         match mutation_type {
             0 => val + rng.gen_range(-0.2..0.2),
