@@ -14,21 +14,19 @@ We use Vite to build the frontend. It is fast and supports WASM imports natively
 - `tsconfig.json` - TypeScript configuration, strict mode
 - `package.json` - All JavaScript dependencies and scripts
 
-### WASM Crates (Rust)
+### WASM Crate (Rust)
 
-We split the WASM code into three separate crates. Each crate compiles to a WebAssembly module.
+We use a single Rust crate for WebAssembly compilation.
 
-- `crates/hypha-core/` - Genome, gene, mutation, crossover logic
-- `crates/sensor-field/` - Camera light field, audio, motion processing
-- `crates/evolution/` - Evolutionary algorithm, fitness, selection
+- `crates/mycelia-core/` - Genome, sensor processing, evolution logic
 
-Each crate uses `wasm-pack` to compile Rust to WASM for the browser.
+It compiles to WebAssembly using `wasm-pack`.
 
 ### Signaling Server (Node.js)
 
-A simple WebSocket server that helps peers find each other.
+A lightweight WebSocket server that relays WebRTC signals between peers.
 
-- `signaling-server/src/index.js` - Server code
+- `signaling-server/src/index.js` - Server code with peer message relay
 - `signaling-server/package.json` - Dependencies for the server
 
 ## How to build
@@ -37,7 +35,7 @@ A simple WebSocket server that helps peers find each other.
 # Install JavaScript dependencies
 npm install
 
-# Build all WASM crates
+# Build the WASM crate
 npm run build:wasm
 
 # Start development server
@@ -47,7 +45,7 @@ npm run dev
 ## How to test
 
 ```bash
-# Run Rust tests for all crates
+# Run Rust tests
 cargo test --workspace
 
 # Run JavaScript tests
@@ -60,7 +58,7 @@ npm test
 |---------|-------------|
 | `npm run dev` | Start dev server with hot reload |
 | `npm run build` | Build for production |
-| `npm run build:wasm` | Compile all Rust crates to WASM |
+| `npm run build:wasm` | Compile Rust crate to WASM |
 | `npm run test` | Run JavaScript tests |
 | `npm run test:wasm` | Run Rust tests |
 | `npm run lint` | Check TypeScript for errors |

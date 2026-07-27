@@ -1,9 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/hypha-core",
-    "crates/sensor-field",
-    "crates/evolution",
+    "crates/mycelia-core",
 ]
 
 [workspace.package]
