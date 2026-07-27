@@ -1,0 +1,6 @@
+[target.wasm32-unknown-unknown]
+runner = "wasm-bindgen-test-runner"
+
+[alias]
+build-wasm = "build --target wasm32-unknown-unknown"
+test-wasm = "test --target wasm32-unknown-unknown"
