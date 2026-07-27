@@ -1,4 +1,4 @@
-import { WebSocketServer } from "ws";
+import { WebSocketServer, WebSocket } from "ws";
 
 const PORT = process.env.PORT || 8080;
 
@@ -8,8 +8,12 @@ server.on("connection", (socket) => {
   console.log("peer connected");
 
   socket.on("message", (data) => {
-    const message = JSON.parse(data.toString());
-    console.log("received:", message.type);
+    // Relay signaling messages to all other connected peers
+    server.clients.forEach((client) => {
+      if (client !== socket && client.readyState === WebSocket.OPEN) {
+        client.send(data);
+      }
+    });
   });
 
   socket.on("close", () => {
