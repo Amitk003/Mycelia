@@ -34,44 +34,82 @@ function renderUI() {
   `;
 }
 
-function drawOrganism(canvas: HTMLCanvasElement, generation: number, geneCount: number) {
+function drawOrganism(
+  canvas: HTMLCanvasElement,
+  generation: number,
+  geneDataList: Float32Array[]
+) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  ctx.fillStyle = "rgba(3, 7, 18, 0.2)";
+  ctx.fillStyle = "rgba(3, 7, 18, 0.15)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
-  const numBranches = Math.min(geneCount, 12);
+  const numBranches = Math.min(geneDataList.length, 12);
   const time = Date.now() * 0.002;
 
-  ctx.lineWidth = 2;
   for (let i = 0; i < numBranches; i++) {
-    const angle = (i / numBranches) * Math.PI * 2 + Math.sin(time + i) * 0.1;
-    const length = 40 + Math.sin(time + generation * 0.1 + i) * 20;
-    const endX = centerX + Math.cos(angle) * length;
-    const endY = centerY + Math.sin(angle) * length;
+    const data = geneDataList[i];
+    if (data.length === 0) continue;
 
-    const hue = (160 + i * 20 + generation * 2) % 360;
-    ctx.strokeStyle = `hsl(${hue}, 80%, 60%)`;
+    const avg = data.reduce((a, b) => a + b, 0) / data.length;
+    const peak = Math.max(...data.map(Math.abs));
+    const variance = data.reduce((sum, v) => sum + (v - avg) * (v - avg), 0) / data.length;
+    const firstVal = data[0];
+    const secondVal = data.length > 1 ? data[1] : 0;
+
+    const baseAngle = (i / numBranches) * Math.PI * 2;
+    const angleOffset = firstVal * 1.2 + Math.sin(time + i) * 0.15;
+    const angle = baseAngle + angleOffset;
+
+    const branchLength = 35 + (avg + 1) * 20 + Math.sin(time + i * 0.7 + generation * 0.05) * 10;
+    const branchWidth = 1.5 + (variance + 0.1) * 4;
+
+    const endX = centerX + Math.cos(angle) * branchLength;
+    const endY = centerY + Math.sin(angle) * branchLength;
+
+    const hue = (60 + firstVal * 60 + secondVal * 40 + generation) % 360;
+    const saturation = 70 + peak * 25;
+    const lightness = 50 + avg * 20;
+    ctx.strokeStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    ctx.lineWidth = Math.max(1, branchWidth);
 
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
     ctx.lineTo(endX, endY);
     ctx.stroke();
 
+    const tipGlow = 2 + (peak + 1) * 3;
     ctx.fillStyle = `hsl(${hue}, 90%, 70%)`;
+    ctx.shadowColor = `hsl(${hue}, 100%, 60%)`;
+    ctx.shadowBlur = 8;
     ctx.beginPath();
-    ctx.arc(endX, endY, 3, 0, Math.PI * 2);
+    ctx.arc(endX, endY, tipGlow, 0, Math.PI * 2);
     ctx.fill();
+    ctx.shadowBlur = 0;
+
+    if (data.length >= 3) {
+      const subAngle = angle + (data[2] - 0.5) * 1.5;
+      const subLength = branchLength * 0.5 * (1 + (avg + 1) * 0.2);
+      const subEndX = endX + Math.cos(subAngle) * subLength;
+      const subEndY = endY + Math.sin(subAngle) * subLength;
+
+      ctx.strokeStyle = `hsl(${hue}, 60%, 40%)`;
+      ctx.lineWidth = Math.max(0.5, branchWidth * 0.4);
+      ctx.beginPath();
+      ctx.moveTo(endX, endY);
+      ctx.lineTo(subEndX, subEndY);
+      ctx.stroke();
+    }
   }
 }
 
 async function initWasm() {
   const cellStatus = document.getElementById("cell-status");
   try {
-    const wasm = await import("/pkg/mycelia-core/mycelia_core.js");
+    const wasm = await import("../pkg/mycelia-core/mycelia_core.js");
     const result = wasm.init();
     const version = wasm.version();
     const genome = new wasm.Genome();
@@ -174,7 +212,12 @@ async function main() {
       }
 
       if (canvas) {
-        drawOrganism(canvas, wasmResult.genome.generation(), wasmResult.genome.gene_count());
+        const geneCount = wasmResult.genome.gene_count();
+        const geneDataList: Float32Array[] = [];
+        for (let i = 0; i < geneCount; i++) {
+          geneDataList.push(wasmResult.genome.get_gene_data(i));
+        }
+        drawOrganism(canvas, wasmResult.genome.generation(), geneDataList);
       }
     }
   }, 2000);
