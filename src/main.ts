@@ -1,5 +1,6 @@
 import { PeerManager } from "./network/peer-manager";
 import { GeneTransfer } from "./network/gene-transfer";
+import { StigmergyField } from "./network/stigmergy";
 import type { PeerInfo, NetworkPacket } from "./network/mesh-types";
 
 const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname || "localhost"}:8080`;
@@ -41,6 +42,14 @@ function renderUI() {
           <h2 style="color: #f472b6; margin-top: 0;">Gene Transfer</h2>
           <div id="hgt-status" style="color: #94a3b8; font-size: 0.85rem;">Waiting for peers...</div>
         </div>
+      </div>
+
+      <div style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
+        <h2 style="color: #34d399; margin-top: 0;">Pheromone Field (Stigmergy)</h2>
+        <div style="text-align: center;">
+          <canvas id="pheromone-canvas" width="300" height="300" style="background: #030712; border-radius: 6px; border: 1px solid #1e293b;"></canvas>
+        </div>
+        <div id="pheromone-status" style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.5rem;">Initializing...</div>
       </div>
     </div>
   `;
@@ -154,6 +163,71 @@ function updateMeshUI(peers: Map<string, PeerInfo>, state: string, myPeerId: str
   peerListEl.innerHTML = html;
 }
 
+function drawPheromoneGrid(
+  canvas: HTMLCanvasElement,
+  field: StigmergyField
+): void {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const grid = field.getGridSnapshot();
+  const w = field.getGridWidth();
+  const h = field.getGridHeight();
+  const cCount = field.getChemicalCount();
+  const cellW = canvas.width / w;
+  const cellH = canvas.height / h;
+
+  ctx.fillStyle = "#030712";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const chemicalColors: Record<string, string> = {
+    success: "#4ade80",
+    food: "#fbbf24",
+    explore: "#38bdf8",
+    stress: "#f87171",
+    danger: "#ef4444",
+  };
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let maxConc = 0;
+      let maxColor = "#030712";
+
+      for (let c = 0; c < cCount; c++) {
+        const val = grid[(y * w + x) * cCount + c];
+        if (val > maxConc) {
+          maxConc = val;
+          const chemName = field.getChemicalName(c);
+          maxColor = chemicalColors[chemName] || "#94a3b8";
+        }
+      }
+
+      if (maxConc > 0.01) {
+        ctx.fillStyle = maxColor;
+        ctx.globalAlpha = Math.min(1, maxConc * 2);
+        ctx.fillRect(x * cellW, y * cellH, cellW - 1, cellH - 1);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  // draw grid lines
+  ctx.strokeStyle = "rgba(30, 41, 59, 0.3)";
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x <= w; x++) {
+    ctx.beginPath();
+    ctx.moveTo(x * cellW, 0);
+    ctx.lineTo(x * cellW, canvas.height);
+    ctx.stroke();
+  }
+  for (let y = 0; y <= h; y++) {
+    ctx.beginPath();
+    ctx.moveTo(0, y * cellH);
+    ctx.lineTo(canvas.width, y * cellH);
+    ctx.stroke();
+  }
+}
+
 async function initWasm() {
   const cellStatus = document.getElementById("cell-status");
   try {
@@ -189,6 +263,7 @@ async function main() {
 
   let peerManager: PeerManager | null = null;
   let geneTransfer: GeneTransfer | null = null;
+  let stigmergyField: StigmergyField | null = null;
   let wasmResult: Awaited<ReturnType<typeof initWasm>> | null = null;
   let hgtCount = 0;
 
@@ -219,13 +294,23 @@ async function main() {
           }
         }
       }
+      if (stigmergyField && packet.type === "pheromone") {
+        try {
+          const deposit = JSON.parse(packet.payload);
+          stigmergyField.applyRemoteDeposit(deposit);
+        } catch {
+          // ignore malformed packets
+        }
+      }
     },
   });
 
   peerManager.connect();
   geneTransfer = new GeneTransfer(peerManager, { transferInterval: 4, fitnessThreshold: 0.02 });
+  stigmergyField = new StigmergyField(peerManager, { gridWidth: 10, gridHeight: 10, gossipInterval: 3 });
 
   const canvas = document.getElementById("hypha-canvas") as HTMLCanvasElement;
+  const pheromoneCanvas = document.getElementById("pheromone-canvas") as HTMLCanvasElement;
 
   setInterval(() => {
     if (wasmResult) {
@@ -274,6 +359,28 @@ async function main() {
         peerManager.broadcast(packet);
       }
 
+      if (stigmergyField) {
+        stigmergyField.tick();
+
+        const chemTypes: Array<"success" | "food" | "explore" | "stress" | "danger"> = [
+          "success", "food", "explore", "stress", "danger"
+        ];
+        const randomChem = chemTypes[Math.floor(Math.random() * chemTypes.length)];
+        stigmergyField.deposit(randomChem, 0.3 + Math.random() * 0.4, `gen:${wasmResult.genome.generation()}`);
+
+        const pheromoneStatus = document.getElementById("pheromone-status");
+        if (pheromoneStatus) {
+          const foodSignal = stigmergyField.sense("food");
+          const dangerSignal = stigmergyField.sense("danger");
+          pheromoneStatus.innerHTML = `
+            <span style="color: #94a3b8;">Grid: ${stigmergyField.getGridWidth()}x${stigmergyField.getGridHeight()} | </span>
+            <span style="color: #fbbf24;">Food: ${foodSignal ? foodSignal.concentration.toFixed(2) : "0.00"}</span>
+            <span style="color: #94a3b8;"> | </span>
+            <span style="color: #f87171;">Danger: ${dangerSignal ? dangerSignal.concentration.toFixed(2) : "0.00"}</span>
+          `;
+        }
+      }
+
       if (canvas) {
         const geneCount = wasmResult.genome.gene_count();
         const geneDataList: Float32Array[] = [];
@@ -281,6 +388,10 @@ async function main() {
           geneDataList.push(wasmResult.genome.get_gene_data(i));
         }
         drawOrganism(canvas, wasmResult.genome.generation(), geneDataList);
+      }
+
+      if (pheromoneCanvas && stigmergyField) {
+        drawPheromoneGrid(pheromoneCanvas, stigmergyField);
       }
     }
   }, 2000);
