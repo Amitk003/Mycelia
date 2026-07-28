@@ -273,6 +273,7 @@ async function initWasm() {
   const cellStatus = document.getElementById("cell-status");
   try {
     const wasm = await import("../pkg/mycelia_core.js");
+    await wasm.default();
     const result = wasm.init();
     const version = wasm.version();
     const genome = new wasm.Genome();

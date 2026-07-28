@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 export default defineConfig({
   build: {
@@ -22,6 +23,10 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
+    include: ["simple-peer"],
     exclude: ["mycelia-core"],
   },
+  plugins: [
+    nodePolyfills(),
+  ],
 });
