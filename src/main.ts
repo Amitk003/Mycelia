@@ -2,6 +2,7 @@ import { PeerManager } from "./network/peer-manager";
 import { GeneTransfer } from "./network/gene-transfer";
 import { StigmergyField } from "./network/stigmergy";
 import { ActionProposalEngine } from "./actions/action-engine";
+import { FeedbackTracker } from "./actions/feedback-tracker";
 import type { PeerInfo, NetworkPacket } from "./network/mesh-types";
 
 const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname || "localhost"}:8080`;
@@ -56,6 +57,11 @@ function renderUI() {
       <div id="proposals-panel" style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
         <h2 style="color: #f97316; margin-top: 0;">Action Proposals</h2>
         <div id="proposals-list">Waiting for evaluation...</div>
+      </div>
+
+      <div style="margin-top: 1rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
+        <h2 style="color: #818cf8; margin-top: 0;">Feedback History</h2>
+        <div id="feedback-history" style="color: #94a3b8; font-size: 0.85rem;">No feedback recorded yet.</div>
       </div>
     </div>
   `;
@@ -271,6 +277,7 @@ async function main() {
   let geneTransfer: GeneTransfer | null = null;
   let stigmergyField: StigmergyField | null = null;
   let actionEngine: ActionProposalEngine | null = null;
+  let feedbackTracker: FeedbackTracker | null = null;
   let wasmResult: Awaited<ReturnType<typeof initWasm>> | null = null;
   let hgtCount = 0;
 
@@ -309,6 +316,16 @@ async function main() {
           // ignore malformed packets
         }
       }
+      if (feedbackTracker && packet.type === "fitness_broadcast") {
+        try {
+          const data = JSON.parse(packet.payload);
+          if (data.feedbackType === "selective_pressure") {
+            feedbackTracker.applyRemotePressure(packet.payload);
+          }
+        } catch {
+          // ignore malformed packets
+        }
+      }
     },
   });
 
@@ -316,6 +333,7 @@ async function main() {
   geneTransfer = new GeneTransfer(peerManager, { transferInterval: 4, fitnessThreshold: 0.02 });
   stigmergyField = new StigmergyField(peerManager, { gridWidth: 10, gridHeight: 10, gossipInterval: 3 });
   actionEngine = new ActionProposalEngine();
+  feedbackTracker = new FeedbackTracker(peerManager);
 
   const canvas = document.getElementById("hypha-canvas") as HTMLCanvasElement;
   const pheromoneCanvas = document.getElementById("pheromone-canvas") as HTMLCanvasElement;
@@ -324,6 +342,11 @@ async function main() {
     if (wasmResult) {
       wasmResult.wasm.mutate_genome(wasmResult.genome);
       geneTransfer?.tick(wasmResult.genome);
+
+      if (feedbackTracker) {
+        const adjusted = feedbackTracker.applySelectivePressure(wasmResult.genome.fitness());
+        wasmResult.genome.set_fitness(adjusted);
+      }
 
       const cellStatus = document.getElementById("cell-status");
       if (cellStatus) {
@@ -417,17 +440,37 @@ async function main() {
             proposalsList.querySelectorAll("button").forEach((btn) => {
               btn.addEventListener("click", () => {
                 const proposalId = btn.getAttribute("data-proposal-id");
-                const action = btn.getAttribute("data-action");
-                if (proposalId && action === "accept" && wasmResult) {
-                  const boost = 0.05;
-                  wasmResult.genome.set_fitness(wasmResult.genome.fitness() + boost);
-                } else if (proposalId && action === "reject" && wasmResult) {
-                  const penalty = 0.03;
-                  wasmResult.genome.set_fitness(Math.max(0, wasmResult.genome.fitness() - penalty));
+                  const action = btn.getAttribute("data-action");
+                if (proposalId && (action === "accept" || action === "reject") && wasmResult && feedbackTracker) {
+                  const recordAction: "accepted" | "rejected" = action === "accept" ? "accepted" : "rejected";
+                  const proposal = proposals.find((p: { id: string }) => p.id === proposalId);
+                  const currentFitness = wasmResult.genome.fitness();
+                  feedbackTracker.recordFeedback(proposalId, proposal?.title || "unknown", recordAction, currentFitness);
+                  wasmResult.genome.set_fitness(
+                    action === "accept"
+                      ? Math.min(1, currentFitness + 0.05)
+                      : Math.max(0, currentFitness - 0.03)
+                  );
                 }
               });
             });
           }
+        }
+      }
+
+      const feedbackHistory = document.getElementById("feedback-history");
+      if (feedbackHistory && feedbackTracker) {
+        const recent = feedbackTracker.getRecentFeedback(5);
+        if (recent.length === 0) {
+          feedbackHistory.innerHTML = 'No feedback recorded yet.';
+        } else {
+          feedbackHistory.innerHTML = recent.map((e) => `
+            <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #1e293b;">
+              <span style="color: ${e.action === "accepted" ? "#4ade80" : "#f87171"};">${e.action === "accepted" ? "+" : ""}${e.action}</span>
+              <span style="color: #94a3b8;">${e.category}</span>
+              <span style="color: #64748b;">fit: ${e.previousFitness.toFixed(2)} -> ${e.newFitness.toFixed(2)}</span>
+            </div>
+          `).join("");
         }
       }
 
