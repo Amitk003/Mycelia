@@ -1,4 +1,5 @@
 import { PeerManager } from "./network/peer-manager";
+import { GeneTransfer } from "./network/gene-transfer";
 import type { PeerInfo, NetworkPacket } from "./network/mesh-types";
 
 const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname || "localhost"}:8080`;
@@ -30,9 +31,16 @@ function renderUI() {
         </div>
       </div>
 
-      <div id="genome-stats" style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
-        <h2 style="color: #fbbf24; margin-top: 0;">Genome Telemetry & Real-Time Evolution</h2>
-        <pre id="genome-output" style="color: #94a3b8; font-size: 0.85rem; overflow-x: auto;">Waiting for WASM init...</pre>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+        <div id="genome-stats" style="background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
+          <h2 style="color: #fbbf24; margin-top: 0;">Genome Telemetry & Real-Time Evolution</h2>
+          <pre id="genome-output" style="color: #94a3b8; font-size: 0.85rem; overflow-x: auto;">Waiting for WASM init...</pre>
+        </div>
+
+        <div style="background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
+          <h2 style="color: #f472b6; margin-top: 0;">Gene Transfer</h2>
+          <div id="hgt-status" style="color: #94a3b8; font-size: 0.85rem;">Waiting for peers...</div>
+        </div>
       </div>
     </div>
   `;
@@ -180,7 +188,9 @@ async function main() {
   renderUI();
 
   let peerManager: PeerManager | null = null;
+  let geneTransfer: GeneTransfer | null = null;
   let wasmResult: Awaited<ReturnType<typeof initWasm>> | null = null;
+  let hgtCount = 0;
 
   try {
     wasmResult = await initWasm();
@@ -196,26 +206,31 @@ async function main() {
       updateMeshUI(peerManager?.getPeers() || new Map(), state, peerManager?.getPeerId() || "");
     },
     onPacket: (packet: NetworkPacket, _from: string) => {
-      if (wasmResult && packet.type === "gene_fragment") {
-        try {
-          const remoteData = JSON.parse(packet.payload);
-          if (remoteData.fitness > wasmResult.genome.fitness()) {
-            wasmResult.genome.set_fitness(remoteData.fitness);
+      if (wasmResult && geneTransfer) {
+        geneTransfer.onPacket(packet, wasmResult.genome);
+        if (packet.type === "gene_fragment") {
+          hgtCount++;
+          const hgtStatus = document.getElementById("hgt-status");
+          if (hgtStatus) {
+            hgtStatus.innerHTML = `
+              <p style="color: #4ade80; margin: 0;">Gene exchanges: ${hgtCount}</p>
+              <p style="color: #94a3b8; margin: 0.25rem 0 0 0; font-size: 0.85rem;">Last: gene#${JSON.parse(packet.payload).index} from ${packet.sourcePeerId}</p>
+            `;
           }
-        } catch {
-          // ignore malformed packets
         }
       }
     },
   });
 
   peerManager.connect();
+  geneTransfer = new GeneTransfer(peerManager, { transferInterval: 4, fitnessThreshold: 0.02 });
 
   const canvas = document.getElementById("hypha-canvas") as HTMLCanvasElement;
 
   setInterval(() => {
     if (wasmResult) {
       wasmResult.wasm.mutate_genome(wasmResult.genome);
+      geneTransfer?.tick(wasmResult.genome);
 
       const cellStatus = document.getElementById("cell-status");
       if (cellStatus) {
@@ -235,6 +250,7 @@ async function main() {
             fitness: wasmResult.genome.fitness(),
             species: wasmResult.genome.species_tag(),
             sensorChannels: wasmResult.sensorField.to_array(),
+            geneExchanges: hgtCount,
           },
           null,
           2
