@@ -1,6 +1,7 @@
 import { PeerManager } from "./network/peer-manager";
 import { GeneTransfer } from "./network/gene-transfer";
 import { StigmergyField } from "./network/stigmergy";
+import { ActionProposalEngine } from "./actions/action-engine";
 import type { PeerInfo, NetworkPacket } from "./network/mesh-types";
 
 const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname || "localhost"}:8080`;
@@ -50,6 +51,11 @@ function renderUI() {
           <canvas id="pheromone-canvas" width="300" height="300" style="background: #030712; border-radius: 6px; border: 1px solid #1e293b;"></canvas>
         </div>
         <div id="pheromone-status" style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.5rem;">Initializing...</div>
+      </div>
+
+      <div id="proposals-panel" style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
+        <h2 style="color: #f97316; margin-top: 0;">Action Proposals</h2>
+        <div id="proposals-list">Waiting for evaluation...</div>
       </div>
     </div>
   `;
@@ -264,6 +270,7 @@ async function main() {
   let peerManager: PeerManager | null = null;
   let geneTransfer: GeneTransfer | null = null;
   let stigmergyField: StigmergyField | null = null;
+  let actionEngine: ActionProposalEngine | null = null;
   let wasmResult: Awaited<ReturnType<typeof initWasm>> | null = null;
   let hgtCount = 0;
 
@@ -308,6 +315,7 @@ async function main() {
   peerManager.connect();
   geneTransfer = new GeneTransfer(peerManager, { transferInterval: 4, fitnessThreshold: 0.02 });
   stigmergyField = new StigmergyField(peerManager, { gridWidth: 10, gridHeight: 10, gossipInterval: 3 });
+  actionEngine = new ActionProposalEngine();
 
   const canvas = document.getElementById("hypha-canvas") as HTMLCanvasElement;
   const pheromoneCanvas = document.getElementById("pheromone-canvas") as HTMLCanvasElement;
@@ -359,6 +367,12 @@ async function main() {
         peerManager.broadcast(packet);
       }
 
+      const geneCount = wasmResult.genome.gene_count();
+      const geneDataList: Float32Array[] = [];
+      for (let i = 0; i < geneCount; i++) {
+        geneDataList.push(wasmResult.genome.get_gene_data(i));
+      }
+
       if (stigmergyField) {
         stigmergyField.tick();
 
@@ -379,14 +393,45 @@ async function main() {
             <span style="color: #f87171;">Danger: ${dangerSignal ? dangerSignal.concentration.toFixed(2) : "0.00"}</span>
           `;
         }
+
+        const proposals = actionEngine ? actionEngine.evaluate(geneDataList, wasmResult.sensorField.to_array(), stigmergyField) : [];
+        const proposalsList = document.getElementById("proposals-list");
+        if (proposalsList) {
+          if (proposals.length === 0) {
+            proposalsList.innerHTML = '<p style="color: #64748b; margin: 0; font-size: 0.85rem;">No high-confidence proposals yet. Let the organism evolve more.</p>';
+          } else {
+            proposalsList.innerHTML = proposals.map((p: { id: string; title: string; description: string; confidence: number }) => `
+              <div style="padding: 0.75rem; margin-bottom: 0.5rem; background: #1e293b; border-radius: 6px; border-left: 3px solid ${p.confidence > 0.6 ? "#4ade80" : p.confidence > 0.4 ? "#fbbf24" : "#f87171"};">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <strong style="color: #e2e8f0; font-size: 0.9rem;">${p.title}</strong>
+                  <span style="color: #94a3b8; font-size: 0.75rem; background: #0f172a; padding: 0.15rem 0.5rem; border-radius: 4px;">${(p.confidence * 100).toFixed(0)}%</span>
+                </div>
+                <p style="color: #94a3b8; font-size: 0.8rem; margin: 0.25rem 0;">${p.description}</p>
+                <div style="display: flex; gap: 0.5rem; margin-top: 0.4rem;">
+                  <button data-proposal-id="${p.id}" data-action="accept" style="background: #065f46; color: #a7f3d0; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Accept</button>
+                  <button data-proposal-id="${p.id}" data-action="reject" style="background: #7f1d1d; color: #fca5a5; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Reject</button>
+                </div>
+              </div>
+            `).join("");
+
+            proposalsList.querySelectorAll("button").forEach((btn) => {
+              btn.addEventListener("click", () => {
+                const proposalId = btn.getAttribute("data-proposal-id");
+                const action = btn.getAttribute("data-action");
+                if (proposalId && action === "accept" && wasmResult) {
+                  const boost = 0.05;
+                  wasmResult.genome.set_fitness(wasmResult.genome.fitness() + boost);
+                } else if (proposalId && action === "reject" && wasmResult) {
+                  const penalty = 0.03;
+                  wasmResult.genome.set_fitness(Math.max(0, wasmResult.genome.fitness() - penalty));
+                }
+              });
+            });
+          }
+        }
       }
 
       if (canvas) {
-        const geneCount = wasmResult.genome.gene_count();
-        const geneDataList: Float32Array[] = [];
-        for (let i = 0; i < geneCount; i++) {
-          geneDataList.push(wasmResult.genome.get_gene_data(i));
-        }
         drawOrganism(canvas, wasmResult.genome.generation(), geneDataList);
       }
 
