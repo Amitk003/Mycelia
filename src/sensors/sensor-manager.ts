@@ -1,4 +1,4 @@
-import type { SensorField } from "../../pkg/mycelia-core/mycelia_core.js";
+import type { SensorField } from "../../pkg/mycelia_core.js";
 import { CameraSensor } from "./camera-sensor";
 import { AudioSensor } from "./audio-sensor";
 import { MotionSensor } from "./motion-sensor";

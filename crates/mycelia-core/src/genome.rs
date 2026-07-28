@@ -111,6 +111,49 @@ impl Genome {
             self.genes[index].data = data;
         }
     }
+
+    pub fn to_encoded(&self) -> String {
+        let payload = StrainPayload {
+            gene_count: self.genes.len() as u32,
+            gene_lengths: self.genes.iter().map(|g| g.data.len() as u32).collect(),
+            gene_data: self.genes.iter().flat_map(|g| g.data.clone()).collect(),
+            generation: self.generation,
+            fitness: self.fitness,
+            species_tag: self.species_tag.clone(),
+        };
+        serde_json::to_string(&payload).unwrap_or_default()
+    }
+
+    pub fn from_encoded(json: &str) -> Option<Genome> {
+        let payload: StrainPayload = serde_json::from_str(json).ok()?;
+        let mut genome = Genome::new();
+        genome.generation = payload.generation;
+        genome.fitness = payload.fitness;
+        genome.species_tag = payload.species_tag;
+
+        let mut offset = 0;
+        for (i, &len) in payload.gene_lengths.iter().enumerate() {
+            if i >= genome.genes.len() {
+                break;
+            }
+            let end = offset + len as usize;
+            if end <= payload.gene_data.len() {
+                genome.genes[i].data = payload.gene_data[offset..end].to_vec();
+                offset = end;
+            }
+        }
+        Some(genome)
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct StrainPayload {
+    gene_count: u32,
+    gene_lengths: Vec<u32>,
+    gene_data: Vec<f32>,
+    generation: u32,
+    fitness: f32,
+    species_tag: String,
 }
 
 impl Genome {
