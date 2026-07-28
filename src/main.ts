@@ -6,6 +6,7 @@ import { FeedbackTracker } from "./actions/feedback-tracker";
 import { SensorManager } from "./sensors/sensor-manager";
 import { EnvironmentalAPI } from "./environmental/environmental-api";
 import { getStarterStrains, exportGenome, importGenome, saveStrain, getSavedStrains } from "./strains/strain-library";
+import { PerformanceMonitor } from "./performance/performance-monitor";
 import type { PeerInfo, NetworkPacket } from "./network/mesh-types";
 
 const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname || "localhost"}:8080`;
@@ -85,6 +86,11 @@ function renderUI() {
           <input id="import-strain-input" type="text" placeholder="Paste encoded strain..." style="flex: 1; background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 4px; padding: 0.4rem; font-size: 0.8rem;" />
           <button id="import-strain-btn" style="background: #065f46; color: #a7f3d0; border: none; padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Import</button>
         </div>
+      </div>
+
+      <div style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
+        <h2 style="color: #a78bfa; margin-top: 0;">Performance</h2>
+        <div id="perf-status" style="color: #94a3b8; font-size: 0.85rem;">Monitoring...</div>
       </div>
     </div>
   `;
@@ -316,6 +322,7 @@ async function main() {
   let feedbackTracker: FeedbackTracker | null = null;
   let sensorManager: SensorManager | null = null;
   let environmentalAPI: EnvironmentalAPI | null = null;
+  let perfMonitor: PerformanceMonitor | null = null;
   let wasmResult: Awaited<ReturnType<typeof initWasm>> | null = null;
   let hgtCount = 0;
 
@@ -474,15 +481,19 @@ async function main() {
     }
   });
 
+  perfMonitor = new PerformanceMonitor();
+
   const canvas = document.getElementById("hypha-canvas") as HTMLCanvasElement;
   const pheromoneCanvas = document.getElementById("pheromone-canvas") as HTMLCanvasElement;
 
-  setInterval(() => {
-    if (wasmResult) {
-      wasmResult.wasm.mutate_genome(wasmResult.genome);
-      geneTransfer?.tick(wasmResult.genome);
+  function tick(): void {
+    if (!wasmResult) return;
+    perfMonitor?.beginTick();
 
-      let fitness = wasmResult.genome.fitness();
+    wasmResult.wasm.mutate_genome(wasmResult.genome);
+    geneTransfer?.tick(wasmResult.genome);
+
+    let fitness = wasmResult.genome.fitness();
 
       if (feedbackTracker) {
         fitness = feedbackTracker.applySelectivePressure(fitness);
@@ -644,8 +655,28 @@ async function main() {
       if (pheromoneCanvas && stigmergyField) {
         drawPheromoneGrid(pheromoneCanvas, stigmergyField);
       }
-    }
-  }, 2000);
+
+      const perfEl = document.getElementById("perf-status");
+      if (perfEl && perfMonitor) {
+        const s = perfMonitor.snapshot();
+        perfEl.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <span style="color: #94a3b8;">Tick Rate</span><span style="color: #e2e8f0; text-align: right;">${s.fps.toFixed(1)} FPS</span>
+            <span style="color: #94a3b8;">Per Tick</span><span style="color: #e2e8f0; text-align: right;">${s.msPerTick}ms</span>
+            <span style="color: #94a3b8;">Target</span><span style="color: #e2e8f0; text-align: right;">${s.targetFps.toFixed(1)} FPS</span>
+            <span style="color: #94a3b8;">CPU Budget</span><span style="color: ${s.cpuBudget > 20 ? "#4ade80" : "#f87171"}; text-align: right;">${s.cpuBudget}%</span>
+            <span style="color: #94a3b8;">Skipped</span><span style="color: #e2e8f0; text-align: right;">${s.ticksSkipped}</span>
+            <span style="color: #94a3b8;">Tab</span><span style="color: ${s.tabHidden ? "#f87171" : "#4ade80"}; text-align: right;">${s.tabHidden ? "hidden" : "visible"}</span>
+            <span style="color: #94a3b8;">Sensor Res</span><span style="color: #e2e8f0; text-align: right;">${(s.sensorResolution * 100).toFixed(0)}%</span>
+          </div>
+        `;
+      }
+
+    const nextMs = perfMonitor ? perfMonitor.getIntervalMs() : 2000;
+    setTimeout(tick, nextMs);
+  }
+
+  tick();
 }
 
 main().catch((err) => console.error("Mycelia failed to start:", err));
