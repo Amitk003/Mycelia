@@ -32,35 +32,23 @@ pub struct Genome {
 impl Genome {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        let mut rng = rand::thread_rng();
         let mut genes = Vec::new();
 
         for i in 0..10 {
-            let data_len = rng.gen_range(4..12);
-            let mut data = Vec::with_capacity(data_len);
-            for _ in 0..data_len {
-                data.push(rng.gen_range(-1.0..1.0));
-            }
-
             genes.push(Gene {
                 id: format!("gene_{}", i),
                 gene_type: GeneType::NeuralWeight,
-                data,
+                data: vec![0.0; 4],
                 mutation_rate: 0.05,
-                expression_level: rng.gen_range(0.5..1.0),
+                expression_level: 0.5,
             });
         }
-
-        let birth_timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs_f64();
 
         Genome {
             genes,
             generation: 0,
             parent_ids: Vec::new(),
-            birth_timestamp,
+            birth_timestamp: 0.0,
             fitness: 0.0,
             species_tag: "prototype".to_string(),
         }

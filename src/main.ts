@@ -271,28 +271,35 @@ function drawPheromoneGrid(
 
 async function initWasm() {
   const cellStatus = document.getElementById("cell-status");
+  let step = "import";
   try {
+    step = "import";
     const wasm = await import("../pkg/mycelia_core.js");
+    step = "init";
     await wasm.default();
+    step = "hello";
     const result = wasm.init();
-    const version = wasm.version();
+    step = "version";
+    const ver = wasm.version();
+    step = "genome";
     const genome = new wasm.Genome();
+    step = "sensor";
     const sensorField = new wasm.SensorField();
 
     if (cellStatus) {
       cellStatus.innerHTML = `
         <p style="color: #4ade80; margin: 0 0 0.25rem 0;">Cell active</p>
-        <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">${result} v${version}</p>
+        <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">${result} v${ver}</p>
         <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">Genes: ${genome.gene_count()}, Generation: ${genome.generation()}</p>
       `;
     }
 
     return { wasm, genome, sensorField };
   } catch (err) {
-    console.error("WASM init failed:", err);
+    console.error("WASM init failed at step '" + step + "':", err);
     if (cellStatus) {
       cellStatus.innerHTML = `
-        <p style="color: #f87171; margin: 0;">WASM load failed</p>
+        <p style="color: #f87171; margin: 0;">WASM failed at: ${step}</p>
         <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">${err instanceof Error ? err.message : "Unknown error"}</p>
       `;
     }

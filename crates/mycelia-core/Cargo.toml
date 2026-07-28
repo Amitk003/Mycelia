@@ -22,7 +22,7 @@ codegen-units = 1
 strip = true
 
 [features]
-default = ["wee_alloc"]
+default = []
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
