@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "build:wasm": "wasm-pack build crates/mycelia-core --target web --out-dir ../../pkg/mycelia-core",
+    "build:wasm": "wasm-pack build crates/mycelia-core --target web --out-dir ../../pkg",
     "test": "vitest run",
     "test:wasm": "cargo test --workspace",
     "lint": "tsc --noEmit",

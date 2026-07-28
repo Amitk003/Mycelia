@@ -495,182 +495,182 @@ async function main() {
 
     let fitness = wasmResult.genome.fitness();
 
-      if (feedbackTracker) {
-        fitness = feedbackTracker.applySelectivePressure(fitness);
-      }
+    if (feedbackTracker) {
+      fitness = feedbackTracker.applySelectivePressure(fitness);
+    }
 
-      if (environmentalAPI) {
-        fitness = environmentalAPI.applySelectivePressure(fitness);
-      }
+    if (environmentalAPI) {
+      fitness = environmentalAPI.applySelectivePressure(fitness);
+    }
 
-      wasmResult.genome.set_fitness(fitness);
-      sensorManager?.tick();
+    wasmResult.genome.set_fitness(fitness);
+    sensorManager?.tick();
 
-      const cellStatus = document.getElementById("cell-status");
-      if (cellStatus) {
-        cellStatus.innerHTML = `
-          <p style="color: #4ade80; margin: 0 0 0.25rem 0;">Cell active</p>
-          <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">mycelia-core ready v${wasmResult.wasm.version()}</p>
-          <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">Genes: ${wasmResult.genome.gene_count()}, Generation: ${wasmResult.genome.generation()}</p>
-        `;
-      }
+    const cellStatus = document.getElementById("cell-status");
+    if (cellStatus) {
+      cellStatus.innerHTML = `
+        <p style="color: #4ade80; margin: 0 0 0.25rem 0;">Cell active</p>
+        <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">mycelia-core ready v${wasmResult.wasm.version()}</p>
+        <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">Genes: ${wasmResult.genome.gene_count()}, Generation: ${wasmResult.genome.generation()}</p>
+      `;
+    }
 
-      const genomeOutput = document.getElementById("genome-output");
-      if (genomeOutput) {
-        genomeOutput.textContent = JSON.stringify(
-          {
-            genes: wasmResult.genome.gene_count(),
-            generation: wasmResult.genome.generation(),
-            fitness: wasmResult.genome.fitness(),
-            species: wasmResult.genome.species_tag(),
-            sensorChannels: wasmResult.sensorField.to_array(),
-            geneExchanges: hgtCount,
-          },
-          null,
-          2
-        );
-      }
-
-      if (peerManager) {
-        const packet: NetworkPacket = {
-          type: "fitness_broadcast",
-          sourcePeerId: peerManager.getPeerId(),
+    const genomeOutput = document.getElementById("genome-output");
+    if (genomeOutput) {
+      genomeOutput.textContent = JSON.stringify(
+        {
+          genes: wasmResult.genome.gene_count(),
           generation: wasmResult.genome.generation(),
-          ttl: 3,
-          payload: JSON.stringify({
-            fitness: wasmResult.genome.fitness(),
-            geneCount: wasmResult.genome.gene_count(),
-            species: wasmResult.genome.species_tag(),
-          }),
-          checksum: 0,
-          timestamp: Date.now(),
-        };
-        peerManager.broadcast(packet);
-      }
+          fitness: wasmResult.genome.fitness(),
+          species: wasmResult.genome.species_tag(),
+          sensorChannels: wasmResult.sensorField.to_array(),
+          geneExchanges: hgtCount,
+        },
+        null,
+        2
+      );
+    }
 
-      const geneCount = wasmResult.genome.gene_count();
-      const geneDataList: Float32Array[] = [];
-      for (let i = 0; i < geneCount; i++) {
-        geneDataList.push(wasmResult.genome.get_gene_data(i));
-      }
+    if (peerManager) {
+      const packet: NetworkPacket = {
+        type: "fitness_broadcast",
+        sourcePeerId: peerManager.getPeerId(),
+        generation: wasmResult.genome.generation(),
+        ttl: 3,
+        payload: JSON.stringify({
+          fitness: wasmResult.genome.fitness(),
+          geneCount: wasmResult.genome.gene_count(),
+          species: wasmResult.genome.species_tag(),
+        }),
+        checksum: 0,
+        timestamp: Date.now(),
+      };
+      peerManager.broadcast(packet);
+    }
 
-      if (stigmergyField) {
-        stigmergyField.tick();
+    const geneCount = wasmResult.genome.gene_count();
+    const geneDataList: Float32Array[] = [];
+    for (let i = 0; i < geneCount; i++) {
+      geneDataList.push(wasmResult.genome.get_gene_data(i));
+    }
 
-        const chemTypes: Array<"success" | "food" | "explore" | "stress" | "danger"> = [
-          "success", "food", "explore", "stress", "danger"
-        ];
-        const randomChem = chemTypes[Math.floor(Math.random() * chemTypes.length)];
-        stigmergyField.deposit(randomChem, 0.3 + Math.random() * 0.4, `gen:${wasmResult.genome.generation()}`);
+    if (stigmergyField) {
+      stigmergyField.tick();
 
-        const pheromoneStatus = document.getElementById("pheromone-status");
-        if (pheromoneStatus) {
-          const foodSignal = stigmergyField.sense("food");
-          const dangerSignal = stigmergyField.sense("danger");
-          pheromoneStatus.innerHTML = `
-            <span style="color: #94a3b8;">Grid: ${stigmergyField.getGridWidth()}x${stigmergyField.getGridHeight()} | </span>
-            <span style="color: #fbbf24;">Food: ${foodSignal ? foodSignal.concentration.toFixed(2) : "0.00"}</span>
-            <span style="color: #94a3b8;"> | </span>
-            <span style="color: #f87171;">Danger: ${dangerSignal ? dangerSignal.concentration.toFixed(2) : "0.00"}</span>
-          `;
-        }
+      const chemTypes: Array<"success" | "food" | "explore" | "stress" | "danger"> = [
+        "success", "food", "explore", "stress", "danger"
+      ];
+      const randomChem = chemTypes[Math.floor(Math.random() * chemTypes.length)];
+      stigmergyField.deposit(randomChem, 0.3 + Math.random() * 0.4, `gen:${wasmResult.genome.generation()}`);
 
-        const proposals = actionEngine ? actionEngine.evaluate(geneDataList, wasmResult.sensorField.to_array(), stigmergyField) : [];
-        const proposalsList = document.getElementById("proposals-list");
-        if (proposalsList) {
-          if (proposals.length === 0) {
-            proposalsList.innerHTML = '<p style="color: #64748b; margin: 0; font-size: 0.85rem;">No high-confidence proposals yet. Let the organism evolve more.</p>';
-          } else {
-            proposalsList.innerHTML = proposals.map((p: { id: string; title: string; description: string; confidence: number }) => `
-              <div style="padding: 0.75rem; margin-bottom: 0.5rem; background: #1e293b; border-radius: 6px; border-left: 3px solid ${p.confidence > 0.6 ? "#4ade80" : p.confidence > 0.4 ? "#fbbf24" : "#f87171"};">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <strong style="color: #e2e8f0; font-size: 0.9rem;">${p.title}</strong>
-                  <span style="color: #94a3b8; font-size: 0.75rem; background: #0f172a; padding: 0.15rem 0.5rem; border-radius: 4px;">${(p.confidence * 100).toFixed(0)}%</span>
-                </div>
-                <p style="color: #94a3b8; font-size: 0.8rem; margin: 0.25rem 0;">${p.description}</p>
-                <div style="display: flex; gap: 0.5rem; margin-top: 0.4rem;">
-                  <button data-proposal-id="${p.id}" data-action="accept" style="background: #065f46; color: #a7f3d0; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Accept</button>
-                  <button data-proposal-id="${p.id}" data-action="reject" style="background: #7f1d1d; color: #fca5a5; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Reject</button>
-                </div>
-              </div>
-            `).join("");
-
-            proposalsList.querySelectorAll("button").forEach((btn) => {
-              btn.addEventListener("click", () => {
-                const proposalId = btn.getAttribute("data-proposal-id");
-                  const action = btn.getAttribute("data-action");
-                if (proposalId && (action === "accept" || action === "reject") && wasmResult && feedbackTracker) {
-                  const recordAction: "accepted" | "rejected" = action === "accept" ? "accepted" : "rejected";
-                  const proposal = proposals.find((p: { id: string }) => p.id === proposalId);
-                  const currentFitness = wasmResult.genome.fitness();
-                  feedbackTracker.recordFeedback(proposalId, proposal?.title || "unknown", recordAction, currentFitness);
-                  wasmResult.genome.set_fitness(
-                    action === "accept"
-                      ? Math.min(1, currentFitness + 0.05)
-                      : Math.max(0, currentFitness - 0.03)
-                  );
-                }
-              });
-            });
-          }
-        }
-      }
-
-      const sensorStatus = document.getElementById("sensor-status");
-      if (sensorStatus && sensorManager && wasmResult) {
-        const s = wasmResult.sensorField;
-        sensorStatus.innerHTML = `
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-            <span style="color: #94a3b8;">Brightness</span><span style="color: #e2e8f0; text-align: right;">${s.brightness.toFixed(2)}</span>
-            <span style="color: #94a3b8;">Color Temp</span><span style="color: #e2e8f0; text-align: right;">${s.color_temperature.toFixed(2)}</span>
-            <span style="color: #94a3b8;">Motion</span><span style="color: #e2e8f0; text-align: right;">${s.motion_delta.toFixed(2)}</span>
-            <span style="color: #94a3b8;">Ambient</span><span style="color: #e2e8f0; text-align: right;">${s.ambient_volume.toFixed(2)}</span>
-            <span style="color: #94a3b8;">Rumble</span><span style="color: #e2e8f0; text-align: right;">${s.low_freq_rumbling.toFixed(2)}</span>
-            <span style="color: #94a3b8;">Tilt</span><span style="color: #e2e8f0; text-align: right;">${s.device_tilt_x.toFixed(2)}, ${s.device_tilt_y.toFixed(2)}</span>
-            <span style="color: #94a3b8;">Tab</span><span style="color: ${s.tab_visible ? "#4ade80" : "#f87171"}; text-align: right;">${s.tab_visible ? "visible" : "hidden"}</span>
-          </div>
+      const pheromoneStatus = document.getElementById("pheromone-status");
+      if (pheromoneStatus) {
+        const foodSignal = stigmergyField.sense("food");
+        const dangerSignal = stigmergyField.sense("danger");
+        pheromoneStatus.innerHTML = `
+          <span style="color: #94a3b8;">Grid: ${stigmergyField.getGridWidth()}x${stigmergyField.getGridHeight()} | </span>
+          <span style="color: #fbbf24;">Food: ${foodSignal ? foodSignal.concentration.toFixed(2) : "0.00"}</span>
+          <span style="color: #94a3b8;"> | </span>
+          <span style="color: #f87171;">Danger: ${dangerSignal ? dangerSignal.concentration.toFixed(2) : "0.00"}</span>
         `;
       }
 
-      const feedbackHistory = document.getElementById("feedback-history");
-      if (feedbackHistory && feedbackTracker) {
-        const recent = feedbackTracker.getRecentFeedback(5);
-        if (recent.length === 0) {
-          feedbackHistory.innerHTML = 'No feedback recorded yet.';
+      const proposals = actionEngine ? actionEngine.evaluate(geneDataList, wasmResult.sensorField.to_array(), stigmergyField) : [];
+      const proposalsList = document.getElementById("proposals-list");
+      if (proposalsList) {
+        if (proposals.length === 0) {
+          proposalsList.innerHTML = '<p style="color: #64748b; margin: 0; font-size: 0.85rem;">No high-confidence proposals yet. Let the organism evolve more.</p>';
         } else {
-          feedbackHistory.innerHTML = recent.map((e) => `
-            <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #1e293b;">
-              <span style="color: ${e.action === "accepted" ? "#4ade80" : "#f87171"};">${e.action === "accepted" ? "+" : ""}${e.action}</span>
-              <span style="color: #94a3b8;">${e.category}</span>
-              <span style="color: #64748b;">fit: ${e.previousFitness.toFixed(2)} -> ${e.newFitness.toFixed(2)}</span>
+          proposalsList.innerHTML = proposals.map((p: { id: string; title: string; description: string; confidence: number }) => `
+            <div style="padding: 0.75rem; margin-bottom: 0.5rem; background: #1e293b; border-radius: 6px; border-left: 3px solid ${p.confidence > 0.6 ? "#4ade80" : p.confidence > 0.4 ? "#fbbf24" : "#f87171"};">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="color: #e2e8f0; font-size: 0.9rem;">${p.title}</strong>
+                <span style="color: #94a3b8; font-size: 0.75rem; background: #0f172a; padding: 0.15rem 0.5rem; border-radius: 4px;">${(p.confidence * 100).toFixed(0)}%</span>
+              </div>
+              <p style="color: #94a3b8; font-size: 0.8rem; margin: 0.25rem 0;">${p.description}</p>
+              <div style="display: flex; gap: 0.5rem; margin-top: 0.4rem;">
+                <button data-proposal-id="${p.id}" data-action="accept" style="background: #065f46; color: #a7f3d0; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Accept</button>
+                <button data-proposal-id="${p.id}" data-action="reject" style="background: #7f1d1d; color: #fca5a5; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Reject</button>
+              </div>
             </div>
           `).join("");
+
+          proposalsList.querySelectorAll("button").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const proposalId = btn.getAttribute("data-proposal-id");
+              const action = btn.getAttribute("data-action");
+              if (proposalId && (action === "accept" || action === "reject") && wasmResult && feedbackTracker) {
+                const recordAction: "accepted" | "rejected" = action === "accept" ? "accepted" : "rejected";
+                const proposal = proposals.find((p: { id: string }) => p.id === proposalId);
+                const currentFitness = wasmResult.genome.fitness();
+                feedbackTracker.recordFeedback(proposalId, proposal?.title || "unknown", recordAction, currentFitness);
+                wasmResult.genome.set_fitness(
+                  action === "accept"
+                    ? Math.min(1, currentFitness + 0.05)
+                    : Math.max(0, currentFitness - 0.03)
+                );
+              }
+            });
+          });
         }
       }
+    }
 
-      if (canvas) {
-        drawOrganism(canvas, wasmResult.genome.generation(), geneDataList);
-      }
+    const sensorStatus = document.getElementById("sensor-status");
+    if (sensorStatus && sensorManager && wasmResult) {
+      const s = wasmResult.sensorField;
+      sensorStatus.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+          <span style="color: #94a3b8;">Brightness</span><span style="color: #e2e8f0; text-align: right;">${s.brightness.toFixed(2)}</span>
+          <span style="color: #94a3b8;">Color Temp</span><span style="color: #e2e8f0; text-align: right;">${s.color_temperature.toFixed(2)}</span>
+          <span style="color: #94a3b8;">Motion</span><span style="color: #e2e8f0; text-align: right;">${s.motion_delta.toFixed(2)}</span>
+          <span style="color: #94a3b8;">Ambient</span><span style="color: #e2e8f0; text-align: right;">${s.ambient_volume.toFixed(2)}</span>
+          <span style="color: #94a3b8;">Rumble</span><span style="color: #e2e8f0; text-align: right;">${s.low_freq_rumbling.toFixed(2)}</span>
+          <span style="color: #94a3b8;">Tilt</span><span style="color: #e2e8f0; text-align: right;">${s.device_tilt_x.toFixed(2)}, ${s.device_tilt_y.toFixed(2)}</span>
+          <span style="color: #94a3b8;">Tab</span><span style="color: ${s.tab_visible ? "#4ade80" : "#f87171"}; text-align: right;">${s.tab_visible ? "visible" : "hidden"}</span>
+        </div>
+      `;
+    }
 
-      if (pheromoneCanvas && stigmergyField) {
-        drawPheromoneGrid(pheromoneCanvas, stigmergyField);
-      }
-
-      const perfEl = document.getElementById("perf-status");
-      if (perfEl && perfMonitor) {
-        const s = perfMonitor.snapshot();
-        perfEl.innerHTML = `
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-            <span style="color: #94a3b8;">Tick Rate</span><span style="color: #e2e8f0; text-align: right;">${s.fps.toFixed(1)} FPS</span>
-            <span style="color: #94a3b8;">Per Tick</span><span style="color: #e2e8f0; text-align: right;">${s.msPerTick}ms</span>
-            <span style="color: #94a3b8;">Target</span><span style="color: #e2e8f0; text-align: right;">${s.targetFps.toFixed(1)} FPS</span>
-            <span style="color: #94a3b8;">CPU Budget</span><span style="color: ${s.cpuBudget > 20 ? "#4ade80" : "#f87171"}; text-align: right;">${s.cpuBudget}%</span>
-            <span style="color: #94a3b8;">Skipped</span><span style="color: #e2e8f0; text-align: right;">${s.ticksSkipped}</span>
-            <span style="color: #94a3b8;">Tab</span><span style="color: ${s.tabHidden ? "#f87171" : "#4ade80"}; text-align: right;">${s.tabHidden ? "hidden" : "visible"}</span>
-            <span style="color: #94a3b8;">Sensor Res</span><span style="color: #e2e8f0; text-align: right;">${(s.sensorResolution * 100).toFixed(0)}%</span>
+    const feedbackHistory = document.getElementById("feedback-history");
+    if (feedbackHistory && feedbackTracker) {
+      const recent = feedbackTracker.getRecentFeedback(5);
+      if (recent.length === 0) {
+        feedbackHistory.innerHTML = 'No feedback recorded yet.';
+      } else {
+        feedbackHistory.innerHTML = recent.map((e) => `
+          <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #1e293b;">
+            <span style="color: ${e.action === "accepted" ? "#4ade80" : "#f87171"};">${e.action === "accepted" ? "+" : ""}${e.action}</span>
+            <span style="color: #94a3b8;">${e.category}</span>
+            <span style="color: #64748b;">fit: ${e.previousFitness.toFixed(2)} -> ${e.newFitness.toFixed(2)}</span>
           </div>
-        `;
+        `).join("");
       }
+    }
+
+    if (canvas) {
+      drawOrganism(canvas, wasmResult.genome.generation(), geneDataList);
+    }
+
+    if (pheromoneCanvas && stigmergyField) {
+      drawPheromoneGrid(pheromoneCanvas, stigmergyField);
+    }
+
+    const perfEl = document.getElementById("perf-status");
+    if (perfEl && perfMonitor) {
+      const s = perfMonitor.snapshot();
+      perfEl.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+          <span style="color: #94a3b8;">Tick Rate</span><span style="color: #e2e8f0; text-align: right;">${s.fps.toFixed(1)} FPS</span>
+          <span style="color: #94a3b8;">Per Tick</span><span style="color: #e2e8f0; text-align: right;">${s.msPerTick}ms</span>
+          <span style="color: #94a3b8;">Target</span><span style="color: #e2e8f0; text-align: right;">${s.targetFps.toFixed(1)} FPS</span>
+          <span style="color: #94a3b8;">CPU Budget</span><span style="color: ${s.cpuBudget > 20 ? "#4ade80" : "#f87171"}; text-align: right;">${s.cpuBudget}%</span>
+          <span style="color: #94a3b8;">Skipped</span><span style="color: #e2e8f0; text-align: right;">${s.ticksSkipped}</span>
+          <span style="color: #94a3b8;">Tab</span><span style="color: ${s.tabHidden ? "#f87171" : "#4ade80"}; text-align: right;">${s.tabHidden ? "hidden" : "visible"}</span>
+          <span style="color: #94a3b8;">Sensor Res</span><span style="color: #e2e8f0; text-align: right;">${(s.sensorResolution * 100).toFixed(0)}%</span>
+        </div>
+      `;
+    }
 
     const nextMs = perfMonitor ? perfMonitor.getIntervalMs() : 2000;
     setTimeout(tick, nextMs);
