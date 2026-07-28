@@ -3,6 +3,7 @@ import { GeneTransfer } from "./network/gene-transfer";
 import { StigmergyField } from "./network/stigmergy";
 import { ActionProposalEngine } from "./actions/action-engine";
 import { FeedbackTracker } from "./actions/feedback-tracker";
+import { SensorManager } from "./sensors/sensor-manager";
 import type { PeerInfo, NetworkPacket } from "./network/mesh-types";
 
 const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname || "localhost"}:8080`;
@@ -52,6 +53,11 @@ function renderUI() {
           <canvas id="pheromone-canvas" width="300" height="300" style="background: #030712; border-radius: 6px; border: 1px solid #1e293b;"></canvas>
         </div>
         <div id="pheromone-status" style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.5rem;">Initializing...</div>
+      </div>
+
+      <div style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
+        <h2 style="color: #facc15; margin-top: 0;">Sensors</h2>
+        <div id="sensor-status" style="color: #94a3b8; font-size: 0.85rem;">Initializing sensors...</div>
       </div>
 
       <div id="proposals-panel" style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
@@ -278,6 +284,7 @@ async function main() {
   let stigmergyField: StigmergyField | null = null;
   let actionEngine: ActionProposalEngine | null = null;
   let feedbackTracker: FeedbackTracker | null = null;
+  let sensorManager: SensorManager | null = null;
   let wasmResult: Awaited<ReturnType<typeof initWasm>> | null = null;
   let hgtCount = 0;
 
@@ -335,6 +342,13 @@ async function main() {
   actionEngine = new ActionProposalEngine();
   feedbackTracker = new FeedbackTracker(peerManager);
 
+  sensorManager = new SensorManager();
+  sensorManager.init().then(() => {
+    if (wasmResult) {
+      sensorManager?.setSensorField(wasmResult.sensorField);
+    }
+  });
+
   const canvas = document.getElementById("hypha-canvas") as HTMLCanvasElement;
   const pheromoneCanvas = document.getElementById("pheromone-canvas") as HTMLCanvasElement;
 
@@ -347,6 +361,8 @@ async function main() {
         const adjusted = feedbackTracker.applySelectivePressure(wasmResult.genome.fitness());
         wasmResult.genome.set_fitness(adjusted);
       }
+
+      sensorManager?.tick();
 
       const cellStatus = document.getElementById("cell-status");
       if (cellStatus) {
@@ -456,6 +472,22 @@ async function main() {
             });
           }
         }
+      }
+
+      const sensorStatus = document.getElementById("sensor-status");
+      if (sensorStatus && sensorManager && wasmResult) {
+        const s = wasmResult.sensorField;
+        sensorStatus.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+            <span style="color: #94a3b8;">Brightness</span><span style="color: #e2e8f0; text-align: right;">${s.brightness.toFixed(2)}</span>
+            <span style="color: #94a3b8;">Color Temp</span><span style="color: #e2e8f0; text-align: right;">${s.color_temperature.toFixed(2)}</span>
+            <span style="color: #94a3b8;">Motion</span><span style="color: #e2e8f0; text-align: right;">${s.motion_delta.toFixed(2)}</span>
+            <span style="color: #94a3b8;">Ambient</span><span style="color: #e2e8f0; text-align: right;">${s.ambient_volume.toFixed(2)}</span>
+            <span style="color: #94a3b8;">Rumble</span><span style="color: #e2e8f0; text-align: right;">${s.low_freq_rumbling.toFixed(2)}</span>
+            <span style="color: #94a3b8;">Tilt</span><span style="color: #e2e8f0; text-align: right;">${s.device_tilt_x.toFixed(2)}, ${s.device_tilt_y.toFixed(2)}</span>
+            <span style="color: #94a3b8;">Tab</span><span style="color: ${s.tab_visible ? "#4ade80" : "#f87171"}; text-align: right;">${s.tab_visible ? "visible" : "hidden"}</span>
+          </div>
+        `;
       }
 
       const feedbackHistory = document.getElementById("feedback-history");
