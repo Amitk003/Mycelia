@@ -1,3 +1,6 @@
+import { PeerManager } from "./network/peer-manager";
+import type { PeerInfo, NetworkPacket } from "./network/mesh-types";
+
 const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname || "localhost"}:8080`;
 const appElement = document.getElementById("app");
 
@@ -22,7 +25,8 @@ function renderUI() {
 
         <div style="background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
           <h2 style="color: #c084fc; margin-top: 0;">Peer Mesh</h2>
-          <div id="mesh-status">Connecting to signaling server...</div>
+          <div id="mesh-status">Initializing...</div>
+          <div id="peer-list" style="margin-top: 0.75rem;"></div>
         </div>
       </div>
 
@@ -106,6 +110,42 @@ function drawOrganism(
   }
 }
 
+function updateMeshUI(peers: Map<string, PeerInfo>, state: string, myPeerId: string) {
+  const meshStatus = document.getElementById("mesh-status");
+  const peerListEl = document.getElementById("peer-list");
+  if (!meshStatus || !peerListEl) return;
+
+  const colorMap: Record<string, string> = {
+    disconnected: "#f87171",
+    connecting: "#fbbf24",
+    connected: "#4ade80",
+    disconnecting: "#f87171",
+  };
+  const stateColor = colorMap[state] || "#94a3b8";
+
+  meshStatus.innerHTML = `
+    <p style="color: ${stateColor}; margin: 0 0 0.25rem 0;">${state}</p>
+    <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">My ID: ${myPeerId || "none"}</p>
+  `;
+
+  if (peers.size === 0) {
+    peerListEl.innerHTML = '<p style="color: #64748b; margin: 0; font-size: 0.85rem;">No peers connected</p>';
+    return;
+  }
+
+  let html = "";
+  for (const [id, info] of peers) {
+    html += `
+      <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid #1e293b;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #4ade80; display: inline-block;"></span>
+        <span style="color: #e2e8f0; font-size: 0.85rem;">${id}</span>
+        <span style="color: #64748b; font-size: 0.75rem; margin-left: auto;">gen:${info.generation} fit:${info.fitness.toFixed(2)}</span>
+      </div>
+    `;
+  }
+  peerListEl.innerHTML = html;
+}
+
 async function initWasm() {
   const cellStatus = document.getElementById("cell-status");
   try {
@@ -136,55 +176,45 @@ async function initWasm() {
   }
 }
 
-function connectSignaling() {
-  const meshStatus = document.getElementById("mesh-status");
-  if (!meshStatus) return;
-
-  try {
-    const ws = new WebSocket(WS_URL);
-
-    ws.onopen = () => {
-      meshStatus.innerHTML = '<p style="color: #4ade80; margin: 0;">Connected to signaling mesh</p>';
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "welcome") {
-          meshStatus.innerHTML = `<p style="color: #4ade80; margin: 0;">Connected as ${msg.peerId}</p>`;
-        }
-      } catch {
-        // ignore non-json messages
-      }
-    };
-
-    ws.onerror = () => {
-      meshStatus.innerHTML = '<p style="color: #f87171; margin: 0;">Signaling server offline (local cell mode)</p>';
-    };
-
-    ws.onclose = () => {
-      meshStatus.innerHTML = '<p style="color: #fbbf24; margin: 0;">Disconnected (will retry)</p>';
-      setTimeout(connectSignaling, 3000);
-    };
-
-    return ws;
-  } catch (err) {
-    meshStatus.innerHTML = '<p style="color: #f87171; margin: 0;">WebSocket not available (local cell mode)</p>';
-    console.error("WebSocket error:", err);
-    return null;
-  }
-}
-
 async function main() {
   renderUI();
-  const wasmResult = await initWasm();
-  connectSignaling();
+
+  let peerManager: PeerManager | null = null;
+  let wasmResult: Awaited<ReturnType<typeof initWasm>> | null = null;
+
+  try {
+    wasmResult = await initWasm();
+  } catch {
+    // wasm init failed, continue with reduced functionality
+  }
+
+  peerManager = new PeerManager(WS_URL, {
+    onPeersChanged: (peers) => {
+      updateMeshUI(peers, peerManager?.getState() || "disconnected", peerManager?.getPeerId() || "");
+    },
+    onStateChange: (state) => {
+      updateMeshUI(peerManager?.getPeers() || new Map(), state, peerManager?.getPeerId() || "");
+    },
+    onPacket: (packet: NetworkPacket, _from: string) => {
+      if (wasmResult && packet.type === "gene_fragment") {
+        try {
+          const remoteData = JSON.parse(packet.payload);
+          if (remoteData.fitness > wasmResult.genome.fitness()) {
+            wasmResult.genome.set_fitness(remoteData.fitness);
+          }
+        } catch {
+          // ignore malformed packets
+        }
+      }
+    },
+  });
+
+  peerManager.connect();
 
   const canvas = document.getElementById("hypha-canvas") as HTMLCanvasElement;
 
   setInterval(() => {
     if (wasmResult) {
-      // Execute WASM mutation in Rust core
       wasmResult.wasm.mutate_genome(wasmResult.genome);
 
       const cellStatus = document.getElementById("cell-status");
@@ -209,6 +239,23 @@ async function main() {
           null,
           2
         );
+      }
+
+      if (peerManager) {
+        const packet: NetworkPacket = {
+          type: "fitness_broadcast",
+          sourcePeerId: peerManager.getPeerId(),
+          generation: wasmResult.genome.generation(),
+          ttl: 3,
+          payload: JSON.stringify({
+            fitness: wasmResult.genome.fitness(),
+            geneCount: wasmResult.genome.gene_count(),
+            species: wasmResult.genome.species_tag(),
+          }),
+          checksum: 0,
+          timestamp: Date.now(),
+        };
+        peerManager.broadcast(packet);
       }
 
       if (canvas) {
