@@ -5,6 +5,7 @@ import { ActionProposalEngine } from "./actions/action-engine";
 import { FeedbackTracker } from "./actions/feedback-tracker";
 import { SensorManager } from "./sensors/sensor-manager";
 import { EnvironmentalAPI } from "./environmental/environmental-api";
+import { getStarterStrains, exportGenome, importGenome, saveStrain, getSavedStrains } from "./strains/strain-library";
 import type { PeerInfo, NetworkPacket } from "./network/mesh-types";
 
 const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname || "localhost"}:8080`;
@@ -74,6 +75,16 @@ function renderUI() {
       <div style="margin-top: 1rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
         <h2 style="color: #818cf8; margin-top: 0;">Feedback History</h2>
         <div id="feedback-history" style="color: #94a3b8; font-size: 0.85rem;">No feedback recorded yet.</div>
+      </div>
+
+      <div style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
+        <h2 style="color: #c084fc; margin-top: 0;">Strain Library</h2>
+        <div id="strain-gallery" style="color: #94a3b8; font-size: 0.85rem;">Loading strains...</div>
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+          <button id="export-strain-btn" style="background: #4f46e5; color: #e0e7ff; border: none; padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Export Current</button>
+          <input id="import-strain-input" type="text" placeholder="Paste encoded strain..." style="flex: 1; background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 4px; padding: 0.4rem; font-size: 0.8rem;" />
+          <button id="import-strain-btn" style="background: #065f46; color: #a7f3d0; border: none; padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Import</button>
+        </div>
       </div>
     </div>
   `;
@@ -255,7 +266,7 @@ function drawPheromoneGrid(
 async function initWasm() {
   const cellStatus = document.getElementById("cell-status");
   try {
-    const wasm = await import("../pkg/mycelia-core/mycelia_core.js");
+    const wasm = await import("../pkg/mycelia_core.js");
     const result = wasm.init();
     const version = wasm.version();
     const genome = new wasm.Genome();
@@ -385,6 +396,83 @@ async function main() {
       }
     });
   }, 300000);
+
+  function renderStrainGallery(): void {
+    const gallery = document.getElementById("strain-gallery");
+    if (!gallery || !wasmResult) return;
+
+    const starterStrains = getStarterStrains(wasmResult.wasm);
+    const savedStrains = getSavedStrains();
+
+    let html = '<div style="margin-bottom: 1rem;"><strong style="color: #e2e8f0;">Starter Strains</strong></div>';
+    html += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">';
+
+    for (const strain of starterStrains) {
+      html += `
+        <div style="background: #1e293b; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
+          <div style="color: #c084fc; font-weight: bold; font-size: 0.85rem;">${strain.name}</div>
+          <div style="color: #94a3b8; font-size: 0.75rem; margin: 0.25rem 0;">${strain.description}</div>
+          <button data-strain-encoded="${strain.encoded}" class="load-strain-btn" style="background: #4f46e5; color: #e0e7ff; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; margin-top: 0.3rem;">Load</button>
+        </div>
+      `;
+    }
+
+    html += '</div>';
+
+    if (savedStrains.length > 0) {
+      html += '<div style="margin-bottom: 0.5rem;"><strong style="color: #e2e8f0;">Saved Strains</strong></div>';
+      for (const strain of savedStrains) {
+        html += `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid #1e293b;">
+            <span style="color: #94a3b8; font-size: 0.85rem;">${strain.name}</span>
+            <button data-strain-encoded="${strain.encoded}" class="load-strain-btn" style="background: #4f46e5; color: #e0e7ff; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Load</button>
+          </div>
+        `;
+      }
+    }
+
+    gallery.innerHTML = html;
+
+    gallery.querySelectorAll(".load-strain-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const encoded = btn.getAttribute("data-strain-encoded");
+        if (encoded && wasmResult) {
+          const genome = importGenome(wasmResult.wasm, encoded);
+          if (genome) {
+            wasmResult.genome = genome;
+            renderStrainGallery();
+          }
+        }
+      });
+    });
+  }
+
+  renderStrainGallery();
+
+  document.getElementById("export-strain-btn")?.addEventListener("click", () => {
+    if (wasmResult) {
+      const encoded = exportGenome(wasmResult.genome);
+      const input = document.getElementById("import-strain-input") as HTMLInputElement;
+      if (input) {
+        input.value = encoded;
+        input.select();
+        navigator.clipboard?.writeText(encoded);
+      }
+    }
+  });
+
+  document.getElementById("import-strain-btn")?.addEventListener("click", () => {
+    const input = document.getElementById("import-strain-input") as HTMLInputElement;
+    if (input && input.value.trim() && wasmResult) {
+      const genome = importGenome(wasmResult.wasm, input.value.trim());
+      if (genome) {
+        wasmResult.genome = genome;
+        saveStrain("Imported Strain", input.value.trim());
+        input.value = "";
+        renderStrainGallery();
+      }
+    }
+  });
 
   const canvas = document.getElementById("hypha-canvas") as HTMLCanvasElement;
   const pheromoneCanvas = document.getElementById("pheromone-canvas") as HTMLCanvasElement;
