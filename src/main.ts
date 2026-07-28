@@ -4,6 +4,7 @@ import { StigmergyField } from "./network/stigmergy";
 import { ActionProposalEngine } from "./actions/action-engine";
 import { FeedbackTracker } from "./actions/feedback-tracker";
 import { SensorManager } from "./sensors/sensor-manager";
+import { EnvironmentalAPI } from "./environmental/environmental-api";
 import type { PeerInfo, NetworkPacket } from "./network/mesh-types";
 
 const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname || "localhost"}:8080`;
@@ -58,6 +59,11 @@ function renderUI() {
       <div style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
         <h2 style="color: #facc15; margin-top: 0;">Sensors</h2>
         <div id="sensor-status" style="color: #94a3b8; font-size: 0.85rem;">Initializing sensors...</div>
+      </div>
+
+      <div style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
+        <h2 style="color: #67e8f9; margin-top: 0;">Environmental</h2>
+        <div id="weather-status" style="color: #94a3b8; font-size: 0.85rem;">Fetching weather...</div>
       </div>
 
       <div id="proposals-panel" style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
@@ -276,6 +282,19 @@ async function initWasm() {
   }
 }
 
+function renderWeather(el: HTMLElement, api: EnvironmentalAPI): void {
+  const w = api.getWeather();
+  el.innerHTML = `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+      <span style="color: #94a3b8;">Condition</span><span style="color: #e2e8f0; text-align: right;">${w.condition}</span>
+      <span style="color: #94a3b8;">Temperature</span><span style="color: #e2e8f0; text-align: right;">${w.temperature.toFixed(1)} C</span>
+      <span style="color: #94a3b8;">Humidity</span><span style="color: #e2e8f0; text-align: right;">${(w.humidity * 100).toFixed(0)}%</span>
+      <span style="color: #94a3b8;">Precipitation</span><span style="color: #e2e8f0; text-align: right;">${w.precipitation.toFixed(1)} mm</span>
+      <span style="color: #94a3b8;">Cloud Cover</span><span style="color: #e2e8f0; text-align: right;">${(w.cloudCover * 100).toFixed(0)}%</span>
+    </div>
+  `;
+}
+
 async function main() {
   renderUI();
 
@@ -285,6 +304,7 @@ async function main() {
   let actionEngine: ActionProposalEngine | null = null;
   let feedbackTracker: FeedbackTracker | null = null;
   let sensorManager: SensorManager | null = null;
+  let environmentalAPI: EnvironmentalAPI | null = null;
   let wasmResult: Awaited<ReturnType<typeof initWasm>> | null = null;
   let hgtCount = 0;
 
@@ -349,6 +369,23 @@ async function main() {
     }
   });
 
+  environmentalAPI = new EnvironmentalAPI();
+  environmentalAPI.init().then(() => {
+    const weatherEl = document.getElementById("weather-status");
+    if (weatherEl) {
+      renderWeather(weatherEl, environmentalAPI!);
+    }
+  });
+
+  setInterval(() => {
+    environmentalAPI?.refresh().then(() => {
+      const weatherEl = document.getElementById("weather-status");
+      if (weatherEl && environmentalAPI) {
+        renderWeather(weatherEl, environmentalAPI);
+      }
+    });
+  }, 300000);
+
   const canvas = document.getElementById("hypha-canvas") as HTMLCanvasElement;
   const pheromoneCanvas = document.getElementById("pheromone-canvas") as HTMLCanvasElement;
 
@@ -357,11 +394,17 @@ async function main() {
       wasmResult.wasm.mutate_genome(wasmResult.genome);
       geneTransfer?.tick(wasmResult.genome);
 
+      let fitness = wasmResult.genome.fitness();
+
       if (feedbackTracker) {
-        const adjusted = feedbackTracker.applySelectivePressure(wasmResult.genome.fitness());
-        wasmResult.genome.set_fitness(adjusted);
+        fitness = feedbackTracker.applySelectivePressure(fitness);
       }
 
+      if (environmentalAPI) {
+        fitness = environmentalAPI.applySelectivePressure(fitness);
+      }
+
+      wasmResult.genome.set_fitness(fitness);
       sensorManager?.tick();
 
       const cellStatus = document.getElementById("cell-status");
