@@ -1,3 +1,9 @@
+import "./ui/styles.css";
+import { createLayout, showToast, showTooltip, hideTooltip } from "./ui/layout";
+import { ForestCanvas } from "./ui/organism-canvas";
+import { ForestControls } from "./ui/controls";
+import { Sparkline } from "./ui/sparkline";
+import { SeedBank } from "./ui/stats-overlay";
 import { PeerManager } from "./network/peer-manager";
 import { GeneTransfer } from "./network/gene-transfer";
 import { StigmergyField } from "./network/stigmergy";
@@ -7,321 +13,91 @@ import { SensorManager } from "./sensors/sensor-manager";
 import { EnvironmentalAPI } from "./environmental/environmental-api";
 import { getStarterStrains, exportGenome, importGenome, saveStrain, getSavedStrains } from "./strains/strain-library";
 import { PerformanceMonitor } from "./performance/performance-monitor";
-import type { PeerInfo, NetworkPacket } from "./network/mesh-types";
+import type { NetworkPacket } from "./network/mesh-types";
+import type { SensorField } from "../pkg/mycelia_core.js";
+import type { ActionProposal } from "./actions/action-engine";
 
 const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname || "localhost"}:8080`;
-const appElement = document.getElementById("app");
+const g = (id: string) => document.getElementById(id)!;
 
-function renderUI() {
-  if (!appElement) return;
-
-  appElement.innerHTML = `
-    <div style="font-family: system-ui, sans-serif; padding: 2rem; background: #0a0e17; color: #e2e8f0; min-height: 100vh;">
-      <header style="border-bottom: 1px solid #1e293b; padding-bottom: 1rem; margin-bottom: 2rem;">
-        <h1 style="color: #38bdf8; margin: 0 0 0.5rem 0;">Mycelia</h1>
-        <p style="color: #94a3b8; margin: 0;">Living digital organism growing inside browser tabs</p>
-      </header>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-        <div style="background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
-          <h2 style="color: #a7f3d0; margin-top: 0;">Cell State</h2>
-          <div id="cell-status">Initializing WASM core...</div>
-          <div style="margin-top: 1rem; text-align: center;">
-            <canvas id="hypha-canvas" width="280" height="200" style="background: #030712; border-radius: 6px; border: 1px solid #1e293b;"></canvas>
-          </div>
-        </div>
-
-        <div style="background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
-          <h2 style="color: #c084fc; margin-top: 0;">Peer Mesh</h2>
-          <div id="mesh-status">Initializing...</div>
-          <div id="peer-list" style="margin-top: 0.75rem;"></div>
-        </div>
-      </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
-        <div id="genome-stats" style="background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
-          <h2 style="color: #fbbf24; margin-top: 0;">Genome Telemetry & Real-Time Evolution</h2>
-          <pre id="genome-output" style="color: #94a3b8; font-size: 0.85rem; overflow-x: auto;">Waiting for WASM init...</pre>
-        </div>
-
-        <div style="background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
-          <h2 style="color: #f472b6; margin-top: 0;">Gene Transfer</h2>
-          <div id="hgt-status" style="color: #94a3b8; font-size: 0.85rem;">Waiting for peers...</div>
-        </div>
-      </div>
-
-      <div style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
-        <h2 style="color: #34d399; margin-top: 0;">Pheromone Field (Stigmergy)</h2>
-        <div style="text-align: center;">
-          <canvas id="pheromone-canvas" width="300" height="300" style="background: #030712; border-radius: 6px; border: 1px solid #1e293b;"></canvas>
-        </div>
-        <div id="pheromone-status" style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.5rem;">Initializing...</div>
-      </div>
-
-      <div style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
-        <h2 style="color: #facc15; margin-top: 0;">Sensors</h2>
-        <div id="sensor-status" style="color: #94a3b8; font-size: 0.85rem;">Initializing sensors...</div>
-      </div>
-
-      <div style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
-        <h2 style="color: #67e8f9; margin-top: 0;">Environmental</h2>
-        <div id="weather-status" style="color: #94a3b8; font-size: 0.85rem;">Fetching weather...</div>
-      </div>
-
-      <div id="proposals-panel" style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
-        <h2 style="color: #f97316; margin-top: 0;">Action Proposals</h2>
-        <div id="proposals-list">Waiting for evaluation...</div>
-      </div>
-
-      <div style="margin-top: 1rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
-        <h2 style="color: #818cf8; margin-top: 0;">Feedback History</h2>
-        <div id="feedback-history" style="color: #94a3b8; font-size: 0.85rem;">No feedback recorded yet.</div>
-      </div>
-
-      <div style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
-        <h2 style="color: #c084fc; margin-top: 0;">Strain Library</h2>
-        <div id="strain-gallery" style="color: #94a3b8; font-size: 0.85rem;">Loading strains...</div>
-        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
-          <button id="export-strain-btn" style="background: #4f46e5; color: #e0e7ff; border: none; padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Export Current</button>
-          <input id="import-strain-input" type="text" placeholder="Paste encoded strain..." style="flex: 1; background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 4px; padding: 0.4rem; font-size: 0.8rem;" />
-          <button id="import-strain-btn" style="background: #065f46; color: #a7f3d0; border: none; padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">Import</button>
-        </div>
-      </div>
-
-      <div style="margin-top: 2rem; background: #111827; padding: 1.5rem; border-radius: 8px; border: 1px solid #1f2937;">
-        <h2 style="color: #a78bfa; margin-top: 0;">Performance</h2>
-        <div id="perf-status" style="color: #94a3b8; font-size: 0.85rem;">Monitoring...</div>
-      </div>
-    </div>
-  `;
+function updateSensors(s: SensorField): void {
+  g("sb-bright").textContent = s.brightness.toFixed(2);
+  g("sb-motion").textContent = s.motion_delta.toFixed(2);
+  g("sb-ambient").textContent = s.ambient_volume.toFixed(2);
+  g("sb-tilt").textContent = `${s.device_tilt_x.toFixed(2)}, ${s.device_tilt_y.toFixed(2)}`;
 }
 
-function drawOrganism(
-  canvas: HTMLCanvasElement,
-  generation: number,
-  geneDataList: Float32Array[]
-) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  ctx.fillStyle = "rgba(3, 7, 18, 0.15)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  const numBranches = Math.min(geneDataList.length, 12);
-  const time = Date.now() * 0.002;
-
-  for (let i = 0; i < numBranches; i++) {
-    const data = geneDataList[i];
-    if (data.length === 0) continue;
-
-    const avg = data.reduce((a, b) => a + b, 0) / data.length;
-    const peak = Math.max(...data.map(Math.abs));
-    const variance = data.reduce((sum, v) => sum + (v - avg) * (v - avg), 0) / data.length;
-    const firstVal = data[0];
-    const secondVal = data.length > 1 ? data[1] : 0;
-
-    const baseAngle = (i / numBranches) * Math.PI * 2;
-    const angleOffset = firstVal * 1.2 + Math.sin(time + i) * 0.15;
-    const angle = baseAngle + angleOffset;
-
-    const branchLength = 35 + (avg + 1) * 20 + Math.sin(time + i * 0.7 + generation * 0.05) * 10;
-    const branchWidth = 1.5 + (variance + 0.1) * 4;
-
-    const endX = centerX + Math.cos(angle) * branchLength;
-    const endY = centerY + Math.sin(angle) * branchLength;
-
-    const hue = (60 + firstVal * 60 + secondVal * 40 + generation) % 360;
-    const saturation = 70 + peak * 25;
-    const lightness = 50 + avg * 20;
-    ctx.strokeStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-    ctx.lineWidth = Math.max(1, branchWidth);
-
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
-    ctx.lineTo(endX, endY);
-    ctx.stroke();
-
-    const tipGlow = 2 + (peak + 1) * 3;
-    ctx.fillStyle = `hsl(${hue}, 90%, 70%)`;
-    ctx.shadowColor = `hsl(${hue}, 100%, 60%)`;
-    ctx.shadowBlur = 8;
-    ctx.beginPath();
-    ctx.arc(endX, endY, tipGlow, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    if (data.length >= 3) {
-      const subAngle = angle + (data[2] - 0.5) * 1.5;
-      const subLength = branchLength * 0.5 * (1 + (avg + 1) * 0.2);
-      const subEndX = endX + Math.cos(subAngle) * subLength;
-      const subEndY = endY + Math.sin(subAngle) * subLength;
-
-      ctx.strokeStyle = `hsl(${hue}, 60%, 40%)`;
-      ctx.lineWidth = Math.max(0.5, branchWidth * 0.4);
-      ctx.beginPath();
-      ctx.moveTo(endX, endY);
-      ctx.lineTo(subEndX, subEndY);
-      ctx.stroke();
-    }
-  }
+function updateWeather(w: { condition: string; temperature: number; humidity: number }): void {
+  g("wb-cond").textContent = w.condition;
+  g("wb-temp").textContent = `${w.temperature.toFixed(1)}°C`;
+  g("wb-humid").textContent = `${(w.humidity * 100).toFixed(0)}%`;
 }
 
-function updateMeshUI(peers: Map<string, PeerInfo>, state: string, myPeerId: string) {
-  const meshStatus = document.getElementById("mesh-status");
-  const peerListEl = document.getElementById("peer-list");
-  if (!meshStatus || !peerListEl) return;
+let lastProposalKey = "";
+function updateProposals(proposals: ActionProposal[], onAccept: (id: string) => void, onReject: (id: string) => void): void {
+  const key = proposals.map(p => p.id).join(",");
+  if (key === lastProposalKey) return;
+  lastProposalKey = key;
 
-  const colorMap: Record<string, string> = {
-    disconnected: "#f87171",
-    connecting: "#fbbf24",
-    connected: "#4ade80",
-    disconnecting: "#f87171",
-  };
-  const stateColor = colorMap[state] || "#94a3b8";
-
-  meshStatus.innerHTML = `
-    <p style="color: ${stateColor}; margin: 0 0 0.25rem 0;">${state}</p>
-    <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">My ID: ${myPeerId || "none"}</p>
-  `;
-
-  if (peers.size === 0) {
-    peerListEl.innerHTML = '<p style="color: #64748b; margin: 0; font-size: 0.85rem;">No peers connected</p>';
+  const countEl = g("prop-count");
+  const listEl = g("prop-list");
+  if (proposals.length === 0) {
+    countEl.textContent = "";
+    listEl.innerHTML = '<span class="box-hint" style="margin:0">waiting for evolution...</span>';
     return;
   }
-
-  let html = "";
-  for (const [id, info] of peers) {
-    html += `
-      <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid #1e293b;">
-        <span style="width: 8px; height: 8px; border-radius: 50%; background: #4ade80; display: inline-block;"></span>
-        <span style="color: #e2e8f0; font-size: 0.85rem;">${id}</span>
-        <span style="color: #64748b; font-size: 0.75rem; margin-left: auto;">gen:${info.generation} fit:${info.fitness.toFixed(2)}</span>
+  countEl.textContent = `[${proposals.length}]`;
+  listEl.innerHTML = proposals.map(p => `
+    <div class="prop-item">
+      <div class="prop-item-title">${p.title}</div>
+      <div class="prop-item-desc">${p.description}</div>
+      <div class="prop-item-foot">
+        <span class="prop-item-conf">${(p.confidence * 100).toFixed(0)}%</span>
+        <button class="prop-btn-accept" data-pid="${p.id}">water</button>
+        <button class="prop-btn-reject" data-pid="${p.id}">prune</button>
       </div>
-    `;
-  }
-  peerListEl.innerHTML = html;
-}
-
-function drawPheromoneGrid(
-  canvas: HTMLCanvasElement,
-  field: StigmergyField
-): void {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  const grid = field.getGridSnapshot();
-  const w = field.getGridWidth();
-  const h = field.getGridHeight();
-  const cCount = field.getChemicalCount();
-  const cellW = canvas.width / w;
-  const cellH = canvas.height / h;
-
-  ctx.fillStyle = "#030712";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const chemicalColors: Record<string, string> = {
-    success: "#4ade80",
-    food: "#fbbf24",
-    explore: "#38bdf8",
-    stress: "#f87171",
-    danger: "#ef4444",
-  };
-
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let maxConc = 0;
-      let maxColor = "#030712";
-
-      for (let c = 0; c < cCount; c++) {
-        const val = grid[(y * w + x) * cCount + c];
-        if (val > maxConc) {
-          maxConc = val;
-          const chemName = field.getChemicalName(c);
-          maxColor = chemicalColors[chemName] || "#94a3b8";
-        }
-      }
-
-      if (maxConc > 0.01) {
-        ctx.fillStyle = maxColor;
-        ctx.globalAlpha = Math.min(1, maxConc * 2);
-        ctx.fillRect(x * cellW, y * cellH, cellW - 1, cellH - 1);
-        ctx.globalAlpha = 1;
-      }
-    }
-  }
-
-  // draw grid lines
-  ctx.strokeStyle = "rgba(30, 41, 59, 0.3)";
-  ctx.lineWidth = 0.5;
-  for (let x = 0; x <= w; x++) {
-    ctx.beginPath();
-    ctx.moveTo(x * cellW, 0);
-    ctx.lineTo(x * cellW, canvas.height);
-    ctx.stroke();
-  }
-  for (let y = 0; y <= h; y++) {
-    ctx.beginPath();
-    ctx.moveTo(0, y * cellH);
-    ctx.lineTo(canvas.width, y * cellH);
-    ctx.stroke();
-  }
-}
-
-async function initWasm() {
-  const cellStatus = document.getElementById("cell-status");
-  let step = "import";
-  try {
-    step = "import";
-    const wasm = await import("../pkg/mycelia_core.js");
-    step = "init";
-    await wasm.default();
-    step = "hello";
-    const result = wasm.init();
-    step = "version";
-    const ver = wasm.version();
-    step = "genome";
-    const genome = new wasm.Genome();
-    step = "sensor";
-    const sensorField = new wasm.SensorField();
-
-    if (cellStatus) {
-      cellStatus.innerHTML = `
-        <p style="color: #4ade80; margin: 0 0 0.25rem 0;">Cell active</p>
-        <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">${result} v${ver}</p>
-        <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">Genes: ${genome.gene_count()}, Generation: ${genome.generation()}</p>
-      `;
-    }
-
-    return { wasm, genome, sensorField };
-  } catch (err) {
-    console.error("WASM init failed at step '" + step + "':", err);
-    if (cellStatus) {
-      cellStatus.innerHTML = `
-        <p style="color: #f87171; margin: 0;">WASM failed at: ${step}</p>
-        <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">${err instanceof Error ? err.message : "Unknown error"}</p>
-      `;
-    }
-    throw err;
-  }
-}
-
-function renderWeather(el: HTMLElement, api: EnvironmentalAPI): void {
-  const w = api.getWeather();
-  el.innerHTML = `
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-      <span style="color: #94a3b8;">Condition</span><span style="color: #e2e8f0; text-align: right;">${w.condition}</span>
-      <span style="color: #94a3b8;">Temperature</span><span style="color: #e2e8f0; text-align: right;">${w.temperature.toFixed(1)} C</span>
-      <span style="color: #94a3b8;">Humidity</span><span style="color: #e2e8f0; text-align: right;">${(w.humidity * 100).toFixed(0)}%</span>
-      <span style="color: #94a3b8;">Precipitation</span><span style="color: #e2e8f0; text-align: right;">${w.precipitation.toFixed(1)} mm</span>
-      <span style="color: #94a3b8;">Cloud Cover</span><span style="color: #e2e8f0; text-align: right;">${(w.cloudCover * 100).toFixed(0)}%</span>
     </div>
-  `;
+  `).join("");
+  listEl.querySelectorAll(".prop-btn-accept").forEach(b => b.addEventListener("click", () => { const id = b.getAttribute("data-pid"); if (id) onAccept(id); }));
+  listEl.querySelectorAll(".prop-btn-reject").forEach(b => b.addEventListener("click", () => { const id = b.getAttribute("data-pid"); if (id) onReject(id); }));
 }
 
-async function main() {
-  renderUI();
+let lastFeedbackLen = 0;
+function updateFeedback(entries: Array<{ action: string; category: string; previousFitness: number; newFitness: number }>): void {
+  if (entries.length === lastFeedbackLen) return;
+  lastFeedbackLen = entries.length;
+  const el = g("fb-list");
+  if (entries.length === 0) { el.innerHTML = '<span class="box-hint" style="margin:0">no feedback yet</span>'; return; }
+  el.innerHTML = entries.map(e => `
+    <div class="fb-item">
+      <span class="fb-action-${e.action}">${e.action === "accepted" ? "+" : "−"}${e.action}</span>
+      <span class="fb-category">${e.category}</span>
+      <span class="fb-fit-change">${e.previousFitness.toFixed(2)} → ${e.newFitness.toFixed(2)}</span>
+    </div>
+  `).join("");
+}
+
+async function main(): Promise<void> {
+  const ui = createLayout();
+
+  // Welcome box for first-time visitors
+  const welcomeBox = document.getElementById("welcome-box");
+  const welcomeOverlay = document.getElementById("welcome-overlay");
+  const welcomeEnter = document.getElementById("welcome-enter");
+  if (welcomeBox && welcomeOverlay && welcomeEnter && !localStorage.getItem("mycelia_visited")) {
+    welcomeOverlay.classList.add("visible");
+    welcomeBox.classList.add("visible");
+    welcomeEnter.addEventListener("click", () => {
+      welcomeBox.classList.remove("visible");
+      welcomeOverlay.classList.remove("visible");
+      localStorage.setItem("mycelia_visited", "1");
+    });
+  }
+
+  const forest = new ForestCanvas(ui.canvas);
+  const controls = new ForestControls(ui.leafPause, ui.stepBtn, ui.speedSlider, ui.speedLabel);
+  const sparkline = new Sparkline();
+  const seedBank = new SeedBank(document.getElementById("seed-grid")!);
 
   let peerManager: PeerManager | null = null;
   let geneTransfer: GeneTransfer | null = null;
@@ -333,52 +109,110 @@ async function main() {
   let perfMonitor: PerformanceMonitor | null = null;
   let wasmResult: Awaited<ReturnType<typeof initWasm>> | null = null;
   let hgtCount = 0;
+  let paused = false;
+
+  function resizeCanvas(): void {
+    ui.canvas.width = window.innerWidth;
+    ui.canvas.height = window.innerHeight;
+    forest.resize();
+  }
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+
+  controls.onPause((p) => { paused = p; });
+  controls.onSpeed((speed) => {
+    const interval = Math.max(200, Math.round(2000 / speed));
+    if (perfMonitor) (perfMonitor as unknown as { targetFps: number }).targetFps = 1000 / interval;
+  });
+  controls.onStepOnce(() => { doTick(); });
+
+  ui.canvas.addEventListener("mushroom-hover", ((e: CustomEvent) => {
+    if (e.detail) showTooltip(ui.tooltip, e.detail.x, e.detail.y, e.detail.title, `${(e.detail.confidence * 100).toFixed(0)}%`, e.detail.category);
+    else hideTooltip(ui.tooltip);
+  }) as EventListener);
+
+  function acceptProposal(id: string): void {
+    if (!wasmResult || !feedbackTracker) return;
+    const f = wasmResult.genome.fitness();
+    feedbackTracker.recordFeedback(id, "proposal", "accepted", f);
+    wasmResult.genome.set_fitness(Math.min(1, f + 0.05));
+    showToast(ui.toast, "watered", 1500);
+  }
+  function rejectProposal(id: string): void {
+    if (!wasmResult || !feedbackTracker) return;
+    const f = wasmResult.genome.fitness();
+    feedbackTracker.recordFeedback(id, "proposal", "rejected", f);
+    wasmResult.genome.set_fitness(Math.max(0, f - 0.03));
+    showToast(ui.toast, "pruned", 1500);
+  }
+
+  forest.onMushroomInteract(acceptProposal);
+  ui.canvas.addEventListener("mushroom-reject", ((e: CustomEvent) => { if (e.detail) rejectProposal(e.detail.id); }) as EventListener);
+
+  seedBank.onSeedLoad((encoded) => {
+    if (!wasmResult) return;
+    const genome = importGenome(wasmResult.wasm, encoded);
+    if (genome) { wasmResult.genome = genome; showToast(ui.toast, "seed planted", 2000); renderSeeds(); }
+  });
+
+  document.getElementById("strain-harvest-btn")?.addEventListener("click", () => {
+    if (!wasmResult) return;
+    const encoded = exportGenome(wasmResult.genome);
+    navigator.clipboard?.writeText(encoded);
+    ui.strainInput.value = encoded;
+    ui.strainInput.select();
+    showToast(ui.toast, "strain harvested", 2000);
+  });
+
+  document.getElementById("strain-plant-btn")?.addEventListener("click", () => {
+    const val = ui.strainInput.value.trim();
+    if (!val || !wasmResult) return;
+    const genome = importGenome(wasmResult.wasm, val);
+    if (genome) { wasmResult.genome = genome; saveStrain("imported strain", val); ui.strainInput.value = ""; showToast(ui.toast, "strain planted", 2000); renderSeeds(); }
+  });
+
+  function renderSeeds(): void {
+    if (!wasmResult) return;
+    seedBank.update(getStarterStrains(wasmResult.wasm), getSavedStrains());
+  }
 
   try {
     wasmResult = await initWasm();
+    ui.titleStatus.textContent = "living";
+    renderSeeds();
   } catch {
-    // wasm init failed, continue with reduced functionality
+    ui.titleStatus.textContent = "dormant";
+    ui.titleStatus.style.color = "var(--decay)";
+  }
+
+  function updatePeerList(): void {
+    const el = g("peer-list");
+    if (!peerManager || peerManager.getPeers().size === 0) {
+      el.innerHTML = '<span class="box-hint" style="margin:0">no peers yet</span>';
+      return;
+    }
+    let html = "";
+    for (const [id, info] of peerManager.getPeers()) {
+      html += `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.82rem;">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--moss-glow);flex-shrink:0;"></span>
+        <span style="color:var(--mycelium);font-family:var(--font-data);font-size:0.72rem;">${id.slice(0,8)}</span>
+        <span style="color:var(--mycelium-faint);font-family:var(--font-data);font-size:0.68rem;margin-left:auto;">g:${info.generation} f:${info.fitness.toFixed(2)}</span>
+      </div>`;
+    }
+    el.innerHTML = html;
   }
 
   peerManager = new PeerManager(WS_URL, {
-    onPeersChanged: (peers) => {
-      updateMeshUI(peers, peerManager?.getState() || "disconnected", peerManager?.getPeerId() || "");
-    },
+    onPeersChanged: () => { updatePeerList(); },
     onStateChange: (state) => {
-      updateMeshUI(peerManager?.getPeers() || new Map(), state, peerManager?.getPeerId() || "");
+      ui.titleStatus.textContent = state === "connected" ? "living" : state;
+      ui.titleStatus.style.color = state === "connected" ? "var(--moss-glow)" : "var(--decay)";
+      updatePeerList();
     },
-    onPacket: (packet: NetworkPacket, _from: string) => {
-      if (wasmResult && geneTransfer) {
-        geneTransfer.onPacket(packet, wasmResult.genome);
-        if (packet.type === "gene_fragment") {
-          hgtCount++;
-          const hgtStatus = document.getElementById("hgt-status");
-          if (hgtStatus) {
-            hgtStatus.innerHTML = `
-              <p style="color: #4ade80; margin: 0;">Gene exchanges: ${hgtCount}</p>
-              <p style="color: #94a3b8; margin: 0.25rem 0 0 0; font-size: 0.85rem;">Last: gene#${JSON.parse(packet.payload).index} from ${packet.sourcePeerId}</p>
-            `;
-          }
-        }
-      }
-      if (stigmergyField && packet.type === "pheromone") {
-        try {
-          const deposit = JSON.parse(packet.payload);
-          stigmergyField.applyRemoteDeposit(deposit);
-        } catch {
-          // ignore malformed packets
-        }
-      }
-      if (feedbackTracker && packet.type === "fitness_broadcast") {
-        try {
-          const data = JSON.parse(packet.payload);
-          if (data.feedbackType === "selective_pressure") {
-            feedbackTracker.applyRemotePressure(packet.payload);
-          }
-        } catch {
-          // ignore malformed packets
-        }
-      }
+    onPacket: (packet: NetworkPacket) => {
+      if (wasmResult && geneTransfer) { geneTransfer.onPacket(packet, wasmResult.genome); if (packet.type === "gene_fragment") hgtCount++; }
+      if (stigmergyField && packet.type === "pheromone") { try { stigmergyField.applyRemoteDeposit(JSON.parse(packet.payload)); } catch { /* */ } }
+      if (feedbackTracker && packet.type === "fitness_broadcast") { try { const d = JSON.parse(packet.payload); if (d.feedbackType === "selective_pressure") feedbackTracker.applyRemotePressure(packet.payload); } catch { /* */ } }
     },
   });
 
@@ -389,112 +223,15 @@ async function main() {
   feedbackTracker = new FeedbackTracker(peerManager);
 
   sensorManager = new SensorManager();
-  sensorManager.init().then(() => {
-    if (wasmResult) {
-      sensorManager?.setSensorField(wasmResult.sensorField);
-    }
-  });
+  sensorManager.init().then(() => { if (wasmResult) sensorManager?.setSensorField(wasmResult.sensorField); });
 
   environmentalAPI = new EnvironmentalAPI();
-  environmentalAPI.init().then(() => {
-    const weatherEl = document.getElementById("weather-status");
-    if (weatherEl) {
-      renderWeather(weatherEl, environmentalAPI!);
-    }
-  });
-
-  setInterval(() => {
-    environmentalAPI?.refresh().then(() => {
-      const weatherEl = document.getElementById("weather-status");
-      if (weatherEl && environmentalAPI) {
-        renderWeather(weatherEl, environmentalAPI);
-      }
-    });
-  }, 300000);
-
-  function renderStrainGallery(): void {
-    const gallery = document.getElementById("strain-gallery");
-    if (!gallery || !wasmResult) return;
-
-    const starterStrains = getStarterStrains(wasmResult.wasm);
-    const savedStrains = getSavedStrains();
-
-    let html = '<div style="margin-bottom: 1rem;"><strong style="color: #e2e8f0;">Starter Strains</strong></div>';
-    html += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;">';
-
-    for (const strain of starterStrains) {
-      html += `
-        <div style="background: #1e293b; padding: 0.75rem; border-radius: 6px; border: 1px solid #334155;">
-          <div style="color: #c084fc; font-weight: bold; font-size: 0.85rem;">${strain.name}</div>
-          <div style="color: #94a3b8; font-size: 0.75rem; margin: 0.25rem 0;">${strain.description}</div>
-          <button data-strain-encoded="${strain.encoded}" class="load-strain-btn" style="background: #4f46e5; color: #e0e7ff; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; margin-top: 0.3rem;">Load</button>
-        </div>
-      `;
-    }
-
-    html += '</div>';
-
-    if (savedStrains.length > 0) {
-      html += '<div style="margin-bottom: 0.5rem;"><strong style="color: #e2e8f0;">Saved Strains</strong></div>';
-      for (const strain of savedStrains) {
-        html += `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid #1e293b;">
-            <span style="color: #94a3b8; font-size: 0.85rem;">${strain.name}</span>
-            <button data-strain-encoded="${strain.encoded}" class="load-strain-btn" style="background: #4f46e5; color: #e0e7ff; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Load</button>
-          </div>
-        `;
-      }
-    }
-
-    gallery.innerHTML = html;
-
-    gallery.querySelectorAll(".load-strain-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const encoded = btn.getAttribute("data-strain-encoded");
-        if (encoded && wasmResult) {
-          const genome = importGenome(wasmResult.wasm, encoded);
-          if (genome) {
-            wasmResult.genome = genome;
-            renderStrainGallery();
-          }
-        }
-      });
-    });
-  }
-
-  renderStrainGallery();
-
-  document.getElementById("export-strain-btn")?.addEventListener("click", () => {
-    if (wasmResult) {
-      const encoded = exportGenome(wasmResult.genome);
-      const input = document.getElementById("import-strain-input") as HTMLInputElement;
-      if (input) {
-        input.value = encoded;
-        input.select();
-        navigator.clipboard?.writeText(encoded);
-      }
-    }
-  });
-
-  document.getElementById("import-strain-btn")?.addEventListener("click", () => {
-    const input = document.getElementById("import-strain-input") as HTMLInputElement;
-    if (input && input.value.trim() && wasmResult) {
-      const genome = importGenome(wasmResult.wasm, input.value.trim());
-      if (genome) {
-        wasmResult.genome = genome;
-        saveStrain("Imported Strain", input.value.trim());
-        input.value = "";
-        renderStrainGallery();
-      }
-    }
-  });
+  environmentalAPI.init().then(() => { if (environmentalAPI) updateWeather(environmentalAPI.getWeather()); });
+  setInterval(() => { environmentalAPI?.refresh().then(() => { if (environmentalAPI) updateWeather(environmentalAPI.getWeather()); }); }, 300000);
 
   perfMonitor = new PerformanceMonitor();
 
-  const canvas = document.getElementById("hypha-canvas") as HTMLCanvasElement;
-  const pheromoneCanvas = document.getElementById("pheromone-canvas") as HTMLCanvasElement;
-
-  function tick(): void {
+  function doTick(): void {
     if (!wasmResult) return;
     perfMonitor?.beginTick();
 
@@ -502,189 +239,78 @@ async function main() {
     geneTransfer?.tick(wasmResult.genome);
 
     let fitness = wasmResult.genome.fitness();
-
-    if (feedbackTracker) {
-      fitness = feedbackTracker.applySelectivePressure(fitness);
-    }
-
-    if (environmentalAPI) {
-      fitness = environmentalAPI.applySelectivePressure(fitness);
-    }
-
+    if (feedbackTracker) fitness = feedbackTracker.applySelectivePressure(fitness);
+    if (environmentalAPI) fitness = environmentalAPI.applySelectivePressure(fitness);
     wasmResult.genome.set_fitness(fitness);
     sensorManager?.tick();
 
-    const cellStatus = document.getElementById("cell-status");
-    if (cellStatus) {
-      cellStatus.innerHTML = `
-        <p style="color: #4ade80; margin: 0 0 0.25rem 0;">Cell active</p>
-        <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">mycelia-core ready v${wasmResult.wasm.version()}</p>
-        <p style="color: #94a3b8; margin: 0; font-size: 0.85rem;">Genes: ${wasmResult.genome.gene_count()}, Generation: ${wasmResult.genome.generation()}</p>
-      `;
-    }
-
-    const genomeOutput = document.getElementById("genome-output");
-    if (genomeOutput) {
-      genomeOutput.textContent = JSON.stringify(
-        {
-          genes: wasmResult.genome.gene_count(),
-          generation: wasmResult.genome.generation(),
-          fitness: wasmResult.genome.fitness(),
-          species: wasmResult.genome.species_tag(),
-          sensorChannels: wasmResult.sensorField.to_array(),
-          geneExchanges: hgtCount,
-        },
-        null,
-        2
-      );
-    }
-
-    if (peerManager) {
-      const packet: NetworkPacket = {
-        type: "fitness_broadcast",
-        sourcePeerId: peerManager.getPeerId(),
-        generation: wasmResult.genome.generation(),
-        ttl: 3,
-        payload: JSON.stringify({
-          fitness: wasmResult.genome.fitness(),
-          geneCount: wasmResult.genome.gene_count(),
-          species: wasmResult.genome.species_tag(),
-        }),
-        checksum: 0,
-        timestamp: Date.now(),
-      };
-      peerManager.broadcast(packet);
-    }
-
+    const gen = wasmResult.genome.generation();
+    const fit = wasmResult.genome.fitness();
     const geneCount = wasmResult.genome.gene_count();
-    const geneDataList: Float32Array[] = [];
-    for (let i = 0; i < geneCount; i++) {
-      geneDataList.push(wasmResult.genome.get_gene_data(i));
-    }
+    const species = wasmResult.genome.species_tag();
+
+    if (peerManager) peerManager.broadcast({ type: "fitness_broadcast", sourcePeerId: peerManager.getPeerId(), generation: gen, ttl: 3, payload: JSON.stringify({ fitness: fit, geneCount, species }), checksum: 0, timestamp: Date.now() });
 
     if (stigmergyField) {
       stigmergyField.tick();
+      const ct: Array<"success" | "food" | "explore" | "stress" | "danger"> = ["success", "food", "explore", "stress", "danger"];
+      const rc = ct[Math.floor(Math.random() * ct.length)];
+      stigmergyField.deposit(rc, 0.3 + Math.random() * 0.4, `gen:${gen}`);
+      g("ph-grid").textContent = `${stigmergyField.getGridWidth()}x${stigmergyField.getGridHeight()}`;
+      const foodSig = stigmergyField.sense("food");
+      const dangerSig = stigmergyField.sense("danger");
+      g("ph-food").textContent = foodSig ? foodSig.concentration.toFixed(2) : "0.00";
+      g("ph-danger").textContent = dangerSig ? dangerSig.concentration.toFixed(2) : "0.00";
 
-      const chemTypes: Array<"success" | "food" | "explore" | "stress" | "danger"> = [
-        "success", "food", "explore", "stress", "danger"
-      ];
-      const randomChem = chemTypes[Math.floor(Math.random() * chemTypes.length)];
-      stigmergyField.deposit(randomChem, 0.3 + Math.random() * 0.4, `gen:${wasmResult.genome.generation()}`);
-
-      const pheromoneStatus = document.getElementById("pheromone-status");
-      if (pheromoneStatus) {
-        const foodSignal = stigmergyField.sense("food");
-        const dangerSignal = stigmergyField.sense("danger");
-        pheromoneStatus.innerHTML = `
-          <span style="color: #94a3b8;">Grid: ${stigmergyField.getGridWidth()}x${stigmergyField.getGridHeight()} | </span>
-          <span style="color: #fbbf24;">Food: ${foodSignal ? foodSignal.concentration.toFixed(2) : "0.00"}</span>
-          <span style="color: #94a3b8;"> | </span>
-          <span style="color: #f87171;">Danger: ${dangerSignal ? dangerSignal.concentration.toFixed(2) : "0.00"}</span>
-        `;
-      }
-
-      const proposals = actionEngine ? actionEngine.evaluate(geneDataList, wasmResult.sensorField.to_array(), stigmergyField) : [];
-      const proposalsList = document.getElementById("proposals-list");
-      if (proposalsList) {
-        if (proposals.length === 0) {
-          proposalsList.innerHTML = '<p style="color: #64748b; margin: 0; font-size: 0.85rem;">No high-confidence proposals yet. Let the organism evolve more.</p>';
-        } else {
-          proposalsList.innerHTML = proposals.map((p: { id: string; title: string; description: string; confidence: number }) => `
-            <div style="padding: 0.75rem; margin-bottom: 0.5rem; background: #1e293b; border-radius: 6px; border-left: 3px solid ${p.confidence > 0.6 ? "#4ade80" : p.confidence > 0.4 ? "#fbbf24" : "#f87171"};">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <strong style="color: #e2e8f0; font-size: 0.9rem;">${p.title}</strong>
-                <span style="color: #94a3b8; font-size: 0.75rem; background: #0f172a; padding: 0.15rem 0.5rem; border-radius: 4px;">${(p.confidence * 100).toFixed(0)}%</span>
-              </div>
-              <p style="color: #94a3b8; font-size: 0.8rem; margin: 0.25rem 0;">${p.description}</p>
-              <div style="display: flex; gap: 0.5rem; margin-top: 0.4rem;">
-                <button data-proposal-id="${p.id}" data-action="accept" style="background: #065f46; color: #a7f3d0; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Accept</button>
-                <button data-proposal-id="${p.id}" data-action="reject" style="background: #7f1d1d; color: #fca5a5; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Reject</button>
-              </div>
-            </div>
-          `).join("");
-
-          proposalsList.querySelectorAll("button").forEach((btn) => {
-            btn.addEventListener("click", () => {
-              const proposalId = btn.getAttribute("data-proposal-id");
-              const action = btn.getAttribute("data-action");
-              if (proposalId && (action === "accept" || action === "reject") && wasmResult && feedbackTracker) {
-                const recordAction: "accepted" | "rejected" = action === "accept" ? "accepted" : "rejected";
-                const proposal = proposals.find((p: { id: string }) => p.id === proposalId);
-                const currentFitness = wasmResult.genome.fitness();
-                feedbackTracker.recordFeedback(proposalId, proposal?.title || "unknown", recordAction, currentFitness);
-                wasmResult.genome.set_fitness(
-                  action === "accept"
-                    ? Math.min(1, currentFitness + 0.05)
-                    : Math.max(0, currentFitness - 0.03)
-                );
-              }
-            });
-          });
-        }
+      const sense = stigmergyField.sense(rc);
+      if (sense) {
+        const cc: Record<string, string> = { success: "rgba(74,103,65,0.4)", food: "rgba(196,162,53,0.4)", explore: "rgba(90,107,74,0.3)", stress: "rgba(139,58,58,0.4)", danger: "rgba(196,90,58,0.4)" };
+        forest.addPheromone(20 + sense.x * (ui.canvas.width - 40) / 10, 20 + sense.y * (ui.canvas.height - 40) / 10, cc[rc] || "rgba(90,107,74,0.3)");
       }
     }
 
-    const sensorStatus = document.getElementById("sensor-status");
-    if (sensorStatus && sensorManager && wasmResult) {
-      const s = wasmResult.sensorField;
-      sensorStatus.innerHTML = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-          <span style="color: #94a3b8;">Brightness</span><span style="color: #e2e8f0; text-align: right;">${s.brightness.toFixed(2)}</span>
-          <span style="color: #94a3b8;">Color Temp</span><span style="color: #e2e8f0; text-align: right;">${s.color_temperature.toFixed(2)}</span>
-          <span style="color: #94a3b8;">Motion</span><span style="color: #e2e8f0; text-align: right;">${s.motion_delta.toFixed(2)}</span>
-          <span style="color: #94a3b8;">Ambient</span><span style="color: #e2e8f0; text-align: right;">${s.ambient_volume.toFixed(2)}</span>
-          <span style="color: #94a3b8;">Rumble</span><span style="color: #e2e8f0; text-align: right;">${s.low_freq_rumbling.toFixed(2)}</span>
-          <span style="color: #94a3b8;">Tilt</span><span style="color: #e2e8f0; text-align: right;">${s.device_tilt_x.toFixed(2)}, ${s.device_tilt_y.toFixed(2)}</span>
-          <span style="color: #94a3b8;">Tab</span><span style="color: ${s.tab_visible ? "#4ade80" : "#f87171"}; text-align: right;">${s.tab_visible ? "visible" : "hidden"}</span>
-        </div>
-      `;
+    const geneDataList: Float32Array[] = [];
+    for (let i = 0; i < geneCount; i++) geneDataList.push(wasmResult.genome.get_gene_data(i));
+    const proposals = actionEngine ? actionEngine.evaluate(geneDataList, wasmResult.sensorField.to_array(), stigmergyField) : [];
+    forest.setMushrooms(proposals);
+
+    g("box-gen-val").textContent = gen.toString();
+    g("box-fit-val").textContent = fit.toFixed(4);
+    g("box-peers-val").textContent = (peerManager?.getPeers().size || 0).toString();
+    g("box-hgt-val").textContent = hgtCount.toString();
+
+    updateSensors(wasmResult.sensorField);
+    updateProposals(proposals, acceptProposal, rejectProposal);
+    if (feedbackTracker) updateFeedback(feedbackTracker.getRecentFeedback(5));
+
+    if (perfMonitor) {
+      const snap = perfMonitor.snapshot();
+      g("perf-fps").textContent = `${snap.fps.toFixed(1)}`;
+      g("perf-ms").textContent = `${snap.msPerTick}ms`;
+      g("perf-cpu").textContent = `${snap.cpuBudget}%`;
     }
 
-    const feedbackHistory = document.getElementById("feedback-history");
-    if (feedbackHistory && feedbackTracker) {
-      const recent = feedbackTracker.getRecentFeedback(5);
-      if (recent.length === 0) {
-        feedbackHistory.innerHTML = 'No feedback recorded yet.';
-      } else {
-        feedbackHistory.innerHTML = recent.map((e) => `
-          <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #1e293b;">
-            <span style="color: ${e.action === "accepted" ? "#4ade80" : "#f87171"};">${e.action === "accepted" ? "+" : ""}${e.action}</span>
-            <span style="color: #94a3b8;">${e.category}</span>
-            <span style="color: #64748b;">fit: ${e.previousFitness.toFixed(2)} -> ${e.newFitness.toFixed(2)}</span>
-          </div>
-        `).join("");
-      }
-    }
+    sparkline.push(fit);
 
-    if (canvas) {
-      drawOrganism(canvas, wasmResult.genome.generation(), geneDataList);
-    }
+    const weatherRain = environmentalAPI ? Math.min(1, (environmentalAPI.getWeather().precipitation / 10)) * controls.getSpeed() : controls.getSpeed() * 0.3;
+    forest.draw(gen, geneDataList, fit, species, weatherRain);
+  }
 
-    if (pheromoneCanvas && stigmergyField) {
-      drawPheromoneGrid(pheromoneCanvas, stigmergyField);
-    }
-
-    const perfEl = document.getElementById("perf-status");
-    if (perfEl && perfMonitor) {
-      const s = perfMonitor.snapshot();
-      perfEl.innerHTML = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-          <span style="color: #94a3b8;">Tick Rate</span><span style="color: #e2e8f0; text-align: right;">${s.fps.toFixed(1)} FPS</span>
-          <span style="color: #94a3b8;">Per Tick</span><span style="color: #e2e8f0; text-align: right;">${s.msPerTick}ms</span>
-          <span style="color: #94a3b8;">Target</span><span style="color: #e2e8f0; text-align: right;">${s.targetFps.toFixed(1)} FPS</span>
-          <span style="color: #94a3b8;">CPU Budget</span><span style="color: ${s.cpuBudget > 20 ? "#4ade80" : "#f87171"}; text-align: right;">${s.cpuBudget}%</span>
-          <span style="color: #94a3b8;">Skipped</span><span style="color: #e2e8f0; text-align: right;">${s.ticksSkipped}</span>
-          <span style="color: #94a3b8;">Tab</span><span style="color: ${s.tabHidden ? "#f87171" : "#4ade80"}; text-align: right;">${s.tabHidden ? "hidden" : "visible"}</span>
-          <span style="color: #94a3b8;">Sensor Res</span><span style="color: #e2e8f0; text-align: right;">${(s.sensorResolution * 100).toFixed(0)}%</span>
-        </div>
-      `;
-    }
-
-    const nextMs = perfMonitor ? perfMonitor.getIntervalMs() : 2000;
-    setTimeout(tick, nextMs);
+  function tick(): void {
+    if (!wasmResult) return;
+    if (paused) { setTimeout(tick, 100); return; }
+    doTick();
+    setTimeout(tick, perfMonitor ? perfMonitor.getIntervalMs() : 2000);
   }
 
   tick();
+}
+
+async function initWasm(): Promise<{ wasm: typeof import("../pkg/mycelia_core.js"); genome: import("../pkg/mycelia_core.js").Genome; sensorField: import("../pkg/mycelia_core.js").SensorField }> {
+  const wasm = await import("../pkg/mycelia_core.js");
+  await wasm.default();
+  if (!wasm.init()) throw new Error("WASM init failed");
+  return { wasm, genome: new wasm.Genome(), sensorField: new wasm.SensorField() };
 }
 
 main().catch((err) => console.error("Mycelia failed to start:", err));
