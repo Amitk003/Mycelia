@@ -42,6 +42,10 @@ mycelia/
   docs/              - Documentation
 ```
 
+## Notes
+
+This is a proof-of-concept MVP. The interface targets desktop screens and hasn't been optimized for mobile layouts yet.
+
 ## License
 
 MIT
