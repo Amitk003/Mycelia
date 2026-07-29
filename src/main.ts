@@ -17,7 +17,7 @@ import type { NetworkPacket } from "./network/mesh-types";
 import type { SensorField } from "../pkg/mycelia_core.js";
 import type { ActionProposal } from "./actions/action-engine";
 
-const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname || "localhost"}:8080`;
+const WS_URL = (window as any).__MYCELIA_WS_URL || import.meta.env.VITE_WS_URL || `ws://${window.location.hostname || "localhost"}:8080`;
 const g = (id: string) => document.getElementById(id)!;
 
 function updateSensors(s: SensorField): void {
