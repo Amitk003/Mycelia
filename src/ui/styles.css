@@ -50,10 +50,13 @@ html, body {
   transform: translateY(-1px);
 }
 
-/* Title bar — top row */
-#title-bar { position: absolute; top: 16px; left: 16px; right: 16px; z-index: 10; display: flex; gap: 12px; align-items: stretch; pointer-events: none; }
-#title-bar > * { pointer-events: auto; }
-#title-box { border-radius: 18px; padding: 16px 22px; min-height: 76px; display: flex; flex-direction: column; justify-content: center; flex-shrink: 0; }
+/* ===== TOP ROW — title + stats + weather on the same level ===== */
+#top-row { position: absolute; top: 16px; left: 16px; right: 16px; z-index: 10; display: flex; gap: 12px; align-items: flex-start; pointer-events: none; }
+#top-row > * { position: static; pointer-events: auto; }
+#top-row #box-weather { margin-left: auto; }
+
+/* Title box */
+#title-box { border-radius: 18px; padding: 16px 22px; min-height: 76px; display: flex; flex-direction: column; justify-content: center; }
 #title-text {
   font-family: var(--font-display); font-size: 1.8rem; font-weight: 500;
   color: var(--gold); letter-spacing: 0.04em;
@@ -70,10 +73,10 @@ html, body {
   50% { opacity: 1; }
 }
 
-/* Stats box — horizontal row, same height as title */
+/* Stats box */
 #box-stats {
   padding: 16px 22px; min-height: 76px; border-radius: 18px;
-  display: flex; align-items: center; gap: 24px; flex: 1;
+  display: flex; align-items: center; gap: 24px;
 }
 .stats-combined .stats-row {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -94,17 +97,8 @@ html, body {
 }
 .stat-val.accent { color: var(--gold); text-shadow: 0 1px 6px rgba(196,162,53,0.25); }
 
-/* Columns */
-#col-left { position: absolute; left: 16px; top: 104px; z-index: 10; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
-#col-left > * { pointer-events: auto; }
-#col-right { position: absolute; right: 16px; top: 104px; z-index: 10; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
-#col-right > * { pointer-events: auto; }
-#bottom-bar { position: absolute; bottom: 16px; left: 16px; right: 16px; z-index: 10; display: flex; gap: 12px; align-items: flex-end; pointer-events: none; }
-#bottom-bar > * { pointer-events: auto; flex: 1; max-width: 400px; }
-#bottom-bar #box-seeds { flex: 0 0 auto; }
-
 /* Data boxes */
-.data-box { min-width: 200px; }
+.data-box { min-width: 200px; max-width: 320px; }
 .box-title {
   font-family: var(--font-display); font-size: 1.05rem; font-weight: 500;
   color: var(--gold); letter-spacing: 0.03em; margin-bottom: 8px;
@@ -119,10 +113,15 @@ html, body {
 }
 
 /* === LAYOUT === */
-#box-proposals { max-height: 260px; overflow-y: auto; }
-#box-seeds { text-align: center; min-width: 200px; }
+/* Left area */
+#box-sensors { left: 16px; top: 130px; }
+#box-proposals { left: 16px; bottom: 16px; max-width: 400px; max-height: 260px; overflow-y: auto; }
 
-#peer-list-box { max-width: 280px; max-height: 120px; overflow-y: auto; }
+/* Right area */
+#box-weather { min-width: 200px; }
+#peer-list-box { right: 16px; top: 280px; max-width: 280px; max-height: 120px; overflow-y: auto; }
+#box-feedback { right: 16px; bottom: 16px; min-width: 200px; }
+#box-seeds { left: 50%; transform: translateX(-50%); bottom: 16px; text-align: center; }
 
 /* Proposal items */
 .prop-item {
@@ -195,7 +194,7 @@ html, body {
 #leaf-pause:hover { opacity: 0.8; transform: rotate(-5deg) scale(1.1); }
 #leaf-pause.paused { opacity: 1; transform: rotate(15deg) scale(1.15); }
 
-/* Control group */
+/* Control group (replaces rain control) */
 #control-group {
   position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
   z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 12px;
@@ -293,9 +292,10 @@ html, body {
 
 /* Responsive */
 @media (max-width: 768px) {
-  #col-left, #col-right { top: 96px; }
-  #bottom-bar { flex-direction: column; align-items: stretch; }
-  #bottom-bar > * { max-width: none; }
-  #box-seeds { min-width: 0; }
+  #box-stats { top: 105px; }
+  .data-box { max-width: 240px; }
+  #box-proposals { max-width: 280px; }
+  #box-sensors { top: 140px; }
+  #box-feedback { min-width: 160px; }
   #control-group { right: 8px; }
 }

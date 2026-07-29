@@ -37,8 +37,8 @@ export function createLayout(): LayoutElements {
   app.innerHTML = `
     <canvas id="forest-canvas"></canvas>
 
-    <!-- Title bar — top row -->
-    <div id="title-bar">
+    <!-- Top row — title + stats + weather on the same level -->
+    <div id="top-row">
       <div id="title-box" class="fbox">
         <h1 id="title-text">mycelia</h1>
         <div id="title-status">waking...</div>
@@ -56,14 +56,6 @@ export function createLayout(): LayoutElements {
         <div class="stats-row">
           <span class="stat-label">exchanges</span><span class="stat-val" id="box-hgt-val">0</span>
         </div>
-      </div>
-    </div>
-
-    <!-- Right column --->
-    <div id="col-right">
-      <div id="peer-list-box" class="fbox data-box">
-        <div class="box-title">mesh</div>
-        <div id="peer-list"><span class="box-hint" style="margin:0">no peers yet</span></div>
       </div>
       <div id="box-weather" class="fbox data-box">
         <div class="box-title">environment</div>
@@ -83,48 +75,42 @@ export function createLayout(): LayoutElements {
       </div>
     </div>
 
-    <!-- Left column -->
-    <div id="col-left">
-      <div id="box-sensors" class="fbox data-box">
-        <div class="box-title">senses</div>
-        <div class="box-grid">
-          <span class="box-label">brightness</span><span class="box-val" id="sb-bright">0.00</span>
-          <span class="box-label">motion</span><span class="box-val" id="sb-motion">0.00</span>
-          <span class="box-label">ambient</span><span class="box-val" id="sb-ambient">0.00</span>
-          <span class="box-label">tilt</span><span class="box-val" id="sb-tilt">0, 0</span>
-        </div>
-        <div style="border-top:1px solid rgba(120,140,100,0.15);margin:6px 0;padding-top:6px;">
-          <div class="box-grid">
-            <span class="box-label">fps</span><span class="box-val" id="perf-fps">—</span>
-            <span class="box-label">ms/tick</span><span class="box-val" id="perf-ms">—</span>
-            <span class="box-label">cpu</span><span class="box-val" id="perf-cpu">—</span>
-          </div>
-        </div>
-        <div class="box-hint">camera, mic & motion — stays on your device</div>
-      </div>
+    <div id="peer-list-box" class="fbox data-box">
+      <div class="box-title">mesh</div>
+      <div id="peer-list"><span class="box-hint" style="margin:0">no peers yet</span></div>
     </div>
 
-    <!-- Bottom bar -->
-    <div id="bottom-bar">
-      <div id="box-proposals" class="fbox data-box">
-        <div class="box-title">proposals <span id="prop-count"></span></div>
-        <div id="prop-list">waiting for evolution...</div>
-        <div class="box-hint">organism suggests actions — you choose</div>
+    <!-- Sensors box — below title on left side -->
+    <div id="box-sensors" class="fbox data-box">
+      <div class="box-title">senses</div>
+      <div class="box-grid">
+        <span class="box-label">brightness</span><span class="box-val" id="sb-bright">0.00</span>
+        <span class="box-label">motion</span><span class="box-val" id="sb-motion">0.00</span>
+        <span class="box-label">ambient</span><span class="box-val" id="sb-ambient">0.00</span>
+        <span class="box-label">tilt</span><span class="box-val" id="sb-tilt">0, 0</span>
       </div>
-      <div id="box-seeds" class="fbox">
-        <div class="box-title">seeds</div>
-        <div id="seed-grid"></div>
-        <div id="strain-io">
-          <input id="strain-input" type="text" placeholder="paste strain..." />
-          <button id="strain-plant-btn" class="fbox-btn">plant</button>
-          <button id="strain-harvest-btn" class="fbox-btn">harvest</button>
+      <div style="border-top:1px solid rgba(120,140,100,0.15);margin:6px 0;padding-top:6px;">
+        <div class="box-grid">
+          <span class="box-label">fps</span><span class="box-val" id="perf-fps">—</span>
+          <span class="box-label">ms/tick</span><span class="box-val" id="perf-ms">—</span>
+          <span class="box-label">cpu</span><span class="box-val" id="perf-cpu">—</span>
         </div>
       </div>
-      <div id="box-feedback" class="fbox data-box">
-        <div class="box-title">feedback</div>
-        <div id="fb-list">no feedback yet</div>
-        <div class="box-hint">accept/reject changes fitness — it learns from you</div>
-      </div>
+      <div class="box-hint">camera, mic & motion — stays on your device</div>
+    </div>
+
+    <!-- Proposals box — bottom left -->
+    <div id="box-proposals" class="fbox data-box">
+      <div class="box-title">proposals <span id="prop-count"></span></div>
+      <div id="prop-list">waiting for evolution...</div>
+      <div class="box-hint">organism suggests actions — you choose</div>
+    </div>
+
+    <!-- Feedback box — bottom right -->
+    <div id="box-feedback" class="fbox data-box">
+      <div class="box-title">feedback</div>
+      <div id="fb-list">no feedback yet</div>
+      <div class="box-hint">accept/reject changes fitness — it learns from you</div>
     </div>
 
     <!-- Welcome box — first-time visitors -->
@@ -140,11 +126,23 @@ export function createLayout(): LayoutElements {
       <button id="welcome-enter">enter</button>
     </div>
 
-    <!-- Controls -->
-    <div id="control-group">
-      <div id="leaf-pause" title="pause/resume">
-        <svg viewBox="0 0 32 32" fill="none"><path d="M16 2 C12 6,6 10,4 16 C2 22,6 28,12 30 C14 30.5,16 30,18 28 C22 24,28 18,30 12 C32 6,28 2,22 1 C20 0.8,18 1,16 2Z" fill="#4a6741" opacity="0.7"/><path d="M16 2 C16 8,15 14,14 20 C13 24,12 27,12 30" stroke="#5a6b4a" stroke-width="0.5" opacity="0.5"/></svg>
+    <!-- Seeds — bottom center -->
+    <div id="box-seeds" class="fbox">
+      <div class="box-title">seeds</div>
+      <div id="seed-grid"></div>
+      <div id="strain-io">
+        <input id="strain-input" type="text" placeholder="paste strain..." />
+        <button id="strain-plant-btn" class="fbox-btn">plant</button>
+        <button id="strain-harvest-btn" class="fbox-btn">harvest</button>
       </div>
+    </div>
+
+    <!-- Controls -->
+    <div id="leaf-pause" title="pause/resume">
+      <svg viewBox="0 0 32 32" fill="none"><path d="M16 2 C12 6,6 10,4 16 C2 22,6 28,12 30 C14 30.5,16 30,18 28 C22 24,28 18,30 12 C32 6,28 2,22 1 C20 0.8,18 1,16 2Z" fill="#4a6741" opacity="0.7"/><path d="M16 2 C16 8,15 14,14 20 C13 24,12 27,12 30" stroke="#5a6b4a" stroke-width="0.5" opacity="0.5"/></svg>
+    </div>
+
+    <div id="control-group">
       <div id="step-btn" title="step once"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4 L6 20 L18 12 Z" fill="#5a6b4a" opacity="0.7"/></svg></div>
       <div id="speed-control">
         <label>speed</label>

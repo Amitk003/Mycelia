@@ -14,6 +14,8 @@ export class ForestControls {
     this.stepBtn = stepBtn;
     this.speedSlider = speedSlider;
     this.speedLabel = speedLabel;
+    this.speed = Number(this.speedSlider.value);
+    this.speedLabel.textContent = `${this.speed}x`;
     this.setup();
   }
 
@@ -36,7 +38,7 @@ export class ForestControls {
   }
 
   onPause(cb: (p: boolean) => void): void { this.pauseCallback = cb; }
-  onSpeed(cb: (s: number) => void): void { this.speedCallback = cb; }
+  onSpeed(cb: (s: number) => void): void { this.speedCallback = cb; cb(this.speed); }
   onStepOnce(cb: () => void): void { this.stepCallback = cb; }
   getSpeed(): number { return this.speed; }
   isPaused(): boolean { return this.paused; }
