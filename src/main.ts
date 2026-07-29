@@ -97,6 +97,21 @@ async function main(): Promise<void> {
 
   const forest = new ForestCanvas(ui.canvas);
   const controls = new ForestControls(ui.leafPause, ui.stepBtn, ui.speedSlider, ui.speedLabel);
+
+  // Wire info icon tooltips
+  document.querySelectorAll(".info-icon").forEach(el => {
+    el.addEventListener("mouseenter", () => {
+      const info = el.getAttribute("data-info") || "";
+      const rect = el.getBoundingClientRect();
+      const inner = ui.tooltip.querySelector("#tooltip-inner")!;
+      inner.innerHTML = `<div style="font-family:var(--font-body);font-size:0.82rem;color:var(--mycelium-dim);line-height:1.45;">${info}</div>`;
+      ui.tooltip.style.left = `${rect.left + 14}px`;
+      ui.tooltip.style.top = `${rect.top - 10}px`;
+      ui.tooltip.classList.add("visible");
+    });
+    el.addEventListener("mouseleave", () => hideTooltip(ui.tooltip));
+  });
+
   const sparkline = new Sparkline();
   const seedBank = new SeedBank(document.getElementById("seed-grid")!);
 

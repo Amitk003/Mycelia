@@ -240,6 +240,23 @@ html, body {
 }
 #toast.visible { opacity: 1; transform: translate(-50%,-50%) scale(1); }
 
+/* Info icons */
+.info-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%;
+  font-family: var(--font-data); font-size: 0.65rem; font-weight: 600;
+  color: var(--mycelium-faint); background: rgba(120,140,100,0.08);
+  border: 1px solid rgba(120,140,100,0.15);
+  cursor: help; vertical-align: middle; margin-left: 5px;
+  transition: all 0.2s;
+  line-height: 1;
+}
+.info-icon:hover {
+  color: var(--gold); border-color: var(--gold);
+  background: rgba(196,162,53,0.1);
+  box-shadow: 0 0 10px rgba(196,162,53,0.12);
+}
+
 /* Scrollbar global */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
