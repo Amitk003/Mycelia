@@ -20,6 +20,7 @@ export class PeerManager {
     this.signalingClient = new SignalingClient(signalingUrl, {
       onWelcome: (peerId) => {
         this.myPeerId = peerId;
+        this.signalingClient.requestPeerList();
         this.setState("connected");
       },
       onSignal: (from, signal) => {
