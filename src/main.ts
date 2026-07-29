@@ -62,10 +62,11 @@ function updateProposals(proposals: ActionProposal[], onAccept: (id: string) => 
   listEl.querySelectorAll(".prop-btn-reject").forEach(b => b.addEventListener("click", () => { const id = b.getAttribute("data-pid"); if (id) onReject(id); }));
 }
 
-let lastFeedbackLen = 0;
+let lastFeedbackKey = "";
 function updateFeedback(entries: Array<{ action: string; category: string; previousFitness: number; newFitness: number }>): void {
-  if (entries.length === lastFeedbackLen) return;
-  lastFeedbackLen = entries.length;
+  const key = entries.map(e => `${e.action}:${e.category}:${e.previousFitness.toFixed(4)}:${e.newFitness.toFixed(4)}`).join("|");
+  if (key === lastFeedbackKey) return;
+  lastFeedbackKey = key;
   const el = g("fb-list");
   if (entries.length === 0) { el.innerHTML = '<span class="box-hint" style="margin:0">no feedback yet</span>'; return; }
   el.innerHTML = entries.map(e => `
@@ -122,7 +123,7 @@ async function main(): Promise<void> {
   controls.onPause((p) => { paused = p; });
   controls.onSpeed((speed) => {
     const interval = Math.max(200, Math.round(2000 / speed));
-    if (perfMonitor) (perfMonitor as unknown as { targetFps: number }).targetFps = 1000 / interval;
+    if (perfMonitor) perfMonitor.setTargetFps(1000 / interval);
   });
   controls.onStepOnce(() => { doTick(); });
 

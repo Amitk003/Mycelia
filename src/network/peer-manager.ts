@@ -14,6 +14,7 @@ export class PeerManager {
   private myPeerId = "";
   private events: PeerManagerEvents;
   private state: ConnectionState = "disconnected";
+  private peerDiscoveryTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(signalingUrl: string, events: PeerManagerEvents) {
     this.events = events;
@@ -47,10 +48,19 @@ export class PeerManager {
 
   connect(): void {
     this.signalingClient.connect();
+    if (!this.peerDiscoveryTimer) {
+      this.peerDiscoveryTimer = setInterval(() => {
+        this.signalingClient.requestPeerList();
+      }, 30000);
+    }
   }
 
   disconnect(): void {
     this.signalingClient.disconnect();
+    if (this.peerDiscoveryTimer) {
+      clearInterval(this.peerDiscoveryTimer);
+      this.peerDiscoveryTimer = null;
+    }
     for (const [peerId] of this.peers) {
       this.removePeer(peerId);
     }

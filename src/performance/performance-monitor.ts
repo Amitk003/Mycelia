@@ -71,11 +71,15 @@ export class PerformanceMonitor {
       fps: avgMs > 0 ? 1000 / avgMs : 0,
       msPerTick: Math.round(avgMs * 100) / 100,
       targetFps: this.targetFps,
-      cpuBudget: Math.round((1 - avgMs / this.getIntervalMs()) * 100),
+      cpuBudget: Math.max(0, Math.round((1 - avgMs / this.getIntervalMs()) * 100)),
       ticksSkipped: this.ticksSkipped,
       tabHidden: !this.tabVisible,
       sensorResolution: this.sensorResolution,
     };
+  }
+
+  setTargetFps(fps: number): void {
+    this.targetFps = Math.max(0.1, Math.min(60, fps));
   }
 
   getSensorResolution(): number {
