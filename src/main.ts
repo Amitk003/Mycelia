@@ -168,11 +168,29 @@ async function main(): Promise<void> {
     ui.titleStatus.style.color = "var(--decay)";
   }
 
+  function updatePeerList(): void {
+    const el = g("peer-list");
+    if (!peerManager || peerManager.getPeers().size === 0) {
+      el.innerHTML = '<span class="box-hint" style="margin:0">no peers yet</span>';
+      return;
+    }
+    let html = "";
+    for (const [id, info] of peerManager.getPeers()) {
+      html += `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.82rem;">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--moss-glow);flex-shrink:0;"></span>
+        <span style="color:var(--mycelium);font-family:var(--font-data);font-size:0.72rem;">${id.slice(0,8)}</span>
+        <span style="color:var(--mycelium-faint);font-family:var(--font-data);font-size:0.68rem;margin-left:auto;">g:${info.generation} f:${info.fitness.toFixed(2)}</span>
+      </div>`;
+    }
+    el.innerHTML = html;
+  }
+
   peerManager = new PeerManager(WS_URL, {
-    onPeersChanged: () => {},
+    onPeersChanged: () => { updatePeerList(); },
     onStateChange: (state) => {
       ui.titleStatus.textContent = state === "connected" ? "living" : state;
       ui.titleStatus.style.color = state === "connected" ? "var(--moss-glow)" : "var(--decay)";
+      updatePeerList();
     },
     onPacket: (packet: NetworkPacket) => {
       if (wasmResult && geneTransfer) { geneTransfer.onPacket(packet, wasmResult.genome); if (packet.type === "gene_fragment") hgtCount++; }
@@ -222,6 +240,12 @@ async function main(): Promise<void> {
       const ct: Array<"success" | "food" | "explore" | "stress" | "danger"> = ["success", "food", "explore", "stress", "danger"];
       const rc = ct[Math.floor(Math.random() * ct.length)];
       stigmergyField.deposit(rc, 0.3 + Math.random() * 0.4, `gen:${gen}`);
+      g("ph-grid").textContent = `${stigmergyField.getGridWidth()}x${stigmergyField.getGridHeight()}`;
+      const foodSig = stigmergyField.sense("food");
+      const dangerSig = stigmergyField.sense("danger");
+      g("ph-food").textContent = foodSig ? foodSig.concentration.toFixed(2) : "0.00";
+      g("ph-danger").textContent = dangerSig ? dangerSig.concentration.toFixed(2) : "0.00";
+
       const sense = stigmergyField.sense(rc);
       if (sense) {
         const cc: Record<string, string> = { success: "rgba(74,103,65,0.4)", food: "rgba(196,162,53,0.4)", explore: "rgba(90,107,74,0.3)", stress: "rgba(139,58,58,0.4)", danger: "rgba(196,90,58,0.4)" };
@@ -242,6 +266,14 @@ async function main(): Promise<void> {
     updateSensors(wasmResult.sensorField);
     updateProposals(proposals, acceptProposal, rejectProposal);
     if (feedbackTracker) updateFeedback(feedbackTracker.getRecentFeedback(5));
+
+    // Performance monitor
+    if (perfMonitor) {
+      const snap = perfMonitor.snapshot();
+      g("perf-fps").textContent = `${snap.fps.toFixed(1)}`;
+      g("perf-ms").textContent = `${snap.msPerTick}ms`;
+      g("perf-cpu").textContent = `${snap.cpuBudget}%`;
+    }
 
     sparkline.push(fit);
 

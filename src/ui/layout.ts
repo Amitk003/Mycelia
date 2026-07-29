@@ -57,6 +57,10 @@ export function createLayout(): LayoutElements {
         <span class="stat-label">exchanges</span><span class="stat-val" id="box-hgt-val">0</span>
       </div>
     </div>
+    <div id="peer-list-box" class="fbox data-box" style="top:100px;left:230px;max-width:280px;max-height:120px;overflow-y:auto;">
+      <div class="box-title">mesh</div>
+      <div id="peer-list"><span class="box-hint" style="margin:0">no peers yet</span></div>
+    </div>
 
     <!-- Sensors box — below title on left side -->
     <div id="box-sensors" class="fbox data-box">
@@ -66,6 +70,13 @@ export function createLayout(): LayoutElements {
         <span class="box-label">motion</span><span class="box-val" id="sb-motion">0.00</span>
         <span class="box-label">ambient</span><span class="box-val" id="sb-ambient">0.00</span>
         <span class="box-label">tilt</span><span class="box-val" id="sb-tilt">0, 0</span>
+      </div>
+      <div style="border-top:1px solid rgba(120,140,100,0.15);margin:6px 0;padding-top:6px;">
+        <div class="box-grid">
+          <span class="box-label">fps</span><span class="box-val" id="perf-fps">—</span>
+          <span class="box-label">ms/tick</span><span class="box-val" id="perf-ms">—</span>
+          <span class="box-label">cpu</span><span class="box-val" id="perf-cpu">—</span>
+        </div>
       </div>
       <div class="box-hint">camera, mic & motion — stays on your device</div>
     </div>
@@ -77,6 +88,13 @@ export function createLayout(): LayoutElements {
         <span class="box-label">condition</span><span class="box-val" id="wb-cond">—</span>
         <span class="box-label">temperature</span><span class="box-val" id="wb-temp">—</span>
         <span class="box-label">humidity</span><span class="box-val" id="wb-humid">—</span>
+      </div>
+      <div style="border-top:1px solid rgba(120,140,100,0.15);margin:6px 0;padding-top:6px;">
+        <div class="box-grid">
+          <span class="box-label">pheromone grid</span><span class="box-val" id="ph-grid">—</span>
+          <span class="box-label">food signal</span><span class="box-val" id="ph-food">0.00</span>
+          <span class="box-label">danger signal</span><span class="box-val" id="ph-danger">0.00</span>
+        </div>
       </div>
       <div class="box-hint">weather affects fitness — extremes stress the organism</div>
     </div>
