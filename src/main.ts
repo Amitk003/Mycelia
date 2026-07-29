@@ -98,7 +98,7 @@ async function main(): Promise<void> {
 
   const forest = new ForestCanvas(ui.canvas);
   const controls = new ForestControls(ui.leafPause, ui.stepBtn, ui.speedSlider, ui.speedLabel);
-  new LegendPanel(ui.legendTrigger);
+  new LegendPanel(document.getElementById("legend-trigger")!);
   const sparkline = new Sparkline();
   const seedBank = new SeedBank(document.getElementById("seed-grid")!);
 
