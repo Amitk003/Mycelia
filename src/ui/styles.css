@@ -260,7 +260,7 @@ html, body {
 #welcome-box {
   position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
   z-index: 100; text-align: center;
-  padding: 40px 50px; max-width: 440px;
+  padding: 36px 44px; max-width: 480px;
   opacity: 0; pointer-events: none;
   transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22,1,0.36,1);
   transform: translate(-50%, -48%);
@@ -277,6 +277,20 @@ html, body {
   font-family: var(--font-body); font-size: 1rem;
   color: var(--mycelium); line-height: 1.7;
   margin-bottom: 14px;
+}
+
+#welcome-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px;
+  text-align: left; margin-bottom: 16px;
+}
+#welcome-grid > div {
+  font-family: var(--font-body); font-size: 0.78rem;
+  color: var(--mycelium-dim); line-height: 1.5;
+  display: flex; align-items: center; gap: 7px;
+}
+.wg-dot {
+  flex-shrink: 0; width: 7px; height: 7px;
+  border-radius: 50%;
 }
 #welcome-enter {
   font-family: var(--font-display); font-size: 1.1rem;
