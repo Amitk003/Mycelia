@@ -95,7 +95,7 @@ async function main(): Promise<void> {
   }
 
   const forest = new ForestCanvas(ui.canvas);
-  const controls = new ForestControls(ui.leafPause, ui.rainSlider, ui.rainSpeed);
+  const controls = new ForestControls(ui.leafPause, ui.stepBtn, ui.speedSlider, ui.speedLabel);
   const sparkline = new Sparkline();
   const seedBank = new SeedBank(document.getElementById("seed-grid")!);
 
@@ -114,6 +114,7 @@ async function main(): Promise<void> {
   function resizeCanvas(): void {
     ui.canvas.width = window.innerWidth;
     ui.canvas.height = window.innerHeight;
+    forest.resize();
   }
   window.addEventListener("resize", resizeCanvas);
   resizeCanvas();
@@ -123,6 +124,7 @@ async function main(): Promise<void> {
     const interval = Math.max(200, Math.round(2000 / speed));
     if (perfMonitor) (perfMonitor as unknown as { targetFps: number }).targetFps = 1000 / interval;
   });
+  controls.onStepOnce(() => { doTick(); });
 
   ui.canvas.addEventListener("mushroom-hover", ((e: CustomEvent) => {
     if (e.detail) showTooltip(ui.tooltip, e.detail.x, e.detail.y, e.detail.title, `${(e.detail.confidence * 100).toFixed(0)}%`, e.detail.category);
@@ -229,9 +231,8 @@ async function main(): Promise<void> {
 
   perfMonitor = new PerformanceMonitor();
 
-  function tick(): void {
+  function doTick(): void {
     if (!wasmResult) return;
-    if (paused) { setTimeout(tick, 100); return; }
     perfMonitor?.beginTick();
 
     wasmResult.wasm.mutate_genome(wasmResult.genome);
@@ -282,7 +283,6 @@ async function main(): Promise<void> {
     updateProposals(proposals, acceptProposal, rejectProposal);
     if (feedbackTracker) updateFeedback(feedbackTracker.getRecentFeedback(5));
 
-    // Performance monitor
     if (perfMonitor) {
       const snap = perfMonitor.snapshot();
       g("perf-fps").textContent = `${snap.fps.toFixed(1)}`;
@@ -294,7 +294,12 @@ async function main(): Promise<void> {
 
     const weatherRain = environmentalAPI ? Math.min(1, (environmentalAPI.getWeather().precipitation / 10)) * controls.getSpeed() : controls.getSpeed() * 0.3;
     forest.draw(gen, geneDataList, fit, species, weatherRain);
+  }
 
+  function tick(): void {
+    if (!wasmResult) return;
+    if (paused) { setTimeout(tick, 100); return; }
+    doTick();
     setTimeout(tick, perfMonitor ? perfMonitor.getIntervalMs() : 2000);
   }
 

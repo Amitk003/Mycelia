@@ -1,16 +1,19 @@
 export class ForestControls {
   private leafPause: HTMLElement;
-  private rainSlider: HTMLInputElement;
-  private rainSpeed: HTMLElement;
+  private stepBtn: HTMLElement;
+  private speedSlider: HTMLInputElement;
+  private speedLabel: HTMLElement;
   private paused = false;
   private speed = 1;
   private pauseCallback: ((p: boolean) => void) | null = null;
   private speedCallback: ((s: number) => void) | null = null;
+  private stepCallback: (() => void) | null = null;
 
-  constructor(leafPause: HTMLElement, rainSlider: HTMLInputElement, rainSpeed: HTMLElement) {
+  constructor(leafPause: HTMLElement, stepBtn: HTMLElement, speedSlider: HTMLInputElement, speedLabel: HTMLElement) {
     this.leafPause = leafPause;
-    this.rainSlider = rainSlider;
-    this.rainSpeed = rainSpeed;
+    this.stepBtn = stepBtn;
+    this.speedSlider = speedSlider;
+    this.speedLabel = speedLabel;
     this.setup();
   }
 
@@ -21,15 +24,20 @@ export class ForestControls {
       this.pauseCallback?.(this.paused);
     });
 
-    this.rainSlider.addEventListener("input", () => {
-      this.speed = Number(this.rainSlider.value);
-      this.rainSpeed.textContent = `${this.speed}x`;
+    this.stepBtn.addEventListener("click", () => {
+      if (this.paused) this.stepCallback?.();
+    });
+
+    this.speedSlider.addEventListener("input", () => {
+      this.speed = Number(this.speedSlider.value);
+      this.speedLabel.textContent = `${this.speed}x`;
       this.speedCallback?.(this.speed);
     });
   }
 
   onPause(cb: (p: boolean) => void): void { this.pauseCallback = cb; }
   onSpeed(cb: (s: number) => void): void { this.speedCallback = cb; }
+  onStepOnce(cb: () => void): void { this.stepCallback = cb; }
   getSpeed(): number { return this.speed; }
   isPaused(): boolean { return this.paused; }
 }
