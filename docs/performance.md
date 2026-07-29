@@ -30,7 +30,6 @@ visible or under load.
 
 ## Rust Optimizations
 
-- wee_alloc: lightweight allocator for WASM (~2KB vs 10KB+)
 - LTO: link-time optimization for smaller binary
 - opt-level "z": optimize for size
 - codegen-units 1: maximize optimization surface
@@ -39,5 +38,4 @@ visible or under load.
 ## Files
 
 - src/performance/performance-monitor.ts
-- crates/mycelia-core/Cargo.toml (release profile, wee_alloc)
-- crates/mycelia-core/src/lib.rs (global allocator)
+- crates/mycelia-core/Cargo.toml (release profile)

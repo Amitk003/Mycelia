@@ -71,9 +71,9 @@ function updateFeedback(entries: Array<{ action: string; category: string; previ
   if (entries.length === 0) { el.innerHTML = '<span class="box-hint" style="margin:0">no feedback yet</span>'; return; }
   el.innerHTML = entries.map(e => `
     <div class="fb-item">
-      <span class="fb-action-${e.action}">${e.action === "accepted" ? "+" : "−"}${e.action}</span>
+      <span class="fb-action-${e.action}">${e.action === "accepted" ? "+" : "-"}${e.action}</span>
       <span class="fb-category">${e.category}</span>
-      <span class="fb-fit-change">${e.previousFitness.toFixed(2)} → ${e.newFitness.toFixed(2)}</span>
+      <span class="fb-fit-change">${e.previousFitness.toFixed(2)} -> ${e.newFitness.toFixed(2)}</span>
     </div>
   `).join("");
 }

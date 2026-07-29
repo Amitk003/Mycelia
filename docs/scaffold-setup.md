@@ -66,7 +66,6 @@ npm test
 ## Dependencies
 
 ### JavaScript
-- `three` - 3D graphics for the living visualizer
 - `simple-peer` - WebRTC peer connections for the mesh network
 - `ws` - WebSocket for the signaling server
 
