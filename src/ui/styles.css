@@ -246,30 +246,6 @@ html, body {
 ::-webkit-scrollbar-thumb { background: var(--bark); border-radius: 2px; }
 ::selection { background: rgba(196,162,53,0.25); color: var(--mycelium); }
 
-/* Legend trigger — a fallen seed at the bottom */
-#legend-trigger {
-  position: absolute; left: 50%; bottom: 10px; z-index: 10;
-  transform: translateX(-50%);
-  font-family: var(--font-data); font-size: 0.6rem; letter-spacing: 0.06em;
-  color: var(--mycelium-faint); cursor: pointer;
-  padding: 4px 14px;
-  border: 1px solid rgba(120,140,100,0.12);
-  border-radius: 10px;
-  background: rgba(22, 30, 18, 0.5);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  transition: all 0.3s;
-  opacity: 0.35;
-  line-height: 1;
-  text-transform: lowercase;
-}
-#legend-trigger:hover {
-  opacity: 0.8;
-  color: var(--gold);
-  border-color: rgba(196,162,53,0.25);
-  background: rgba(22, 30, 18, 0.7);
-}
-
 /* Legend overlay */
 #legend-overlay {
   position: fixed; inset: 0; z-index: 80;

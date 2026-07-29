@@ -153,7 +153,73 @@ export function createLayout(): LayoutElements {
 
     <div id="organic-tooltip"><div class="tooltip-leaf" id="tooltip-inner"></div></div>
     <div id="toast"></div>
-    <div id="legend-trigger">guide</div>
+
+    <!-- Legend panel -->
+    <div id="legend-overlay"></div>
+    <div id="legend-panel" class="fbox">
+      <div id="legend-header">
+        <div id="legend-title">the grove</div>
+        <div id="legend-close">x</div>
+      </div>
+      <div id="legend-list">
+        <div class="legend-entry">
+          <span class="legend-dot" style="background:var(--gold)"></span>
+          <div class="legend-body">
+            <div class="legend-entry-title">the organism</div>
+            <div class="legend-entry-desc">Branches are gene expressions that change each generation. Mushrooms = action proposals; click to water, right-click to prune. Colored glows = pheromones from peers. Bottom bar = fitness (health).</div>
+          </div>
+        </div>
+        <div class="legend-entry">
+          <span class="legend-dot" style="background:var(--mycelium)"></span>
+          <div class="legend-body">
+            <div class="legend-entry-title">stats</div>
+            <div class="legend-entry-desc">Generation = mutations applied. Fitness (0-1) = adaptation level. Peers = connected browser tabs (mesh). Exchanges = gene fragments received from peers.</div>
+          </div>
+        </div>
+        <div class="legend-entry">
+          <span class="legend-dot" style="background:var(--lichen)"></span>
+          <div class="legend-body">
+            <div class="legend-entry-title">senses</div>
+            <div class="legend-entry-desc">Live readings from your camera (brightness, motion), microphone (ambient volume), and device orientation (tilt). All data stays on your device.</div>
+          </div>
+        </div>
+        <div class="legend-entry">
+          <span class="legend-dot" style="background:var(--amber)"></span>
+          <div class="legend-body">
+            <div class="legend-entry-title">environment</div>
+            <div class="legend-entry-desc">Real weather via open-meteo.com. Extremes stress the organism. Pheromone grid = virtual chemical signals shared across the mesh.</div>
+          </div>
+        </div>
+        <div class="legend-entry">
+          <span class="legend-dot" style="background:var(--moss-glow)"></span>
+          <div class="legend-body">
+            <div class="legend-entry-title">mesh</div>
+            <div class="legend-entry-desc">Other Mycelia instances connected over WebRTC. No central server after initial handshake. They exchange genes and broadcast pheromones.</div>
+          </div>
+        </div>
+        <div class="legend-entry">
+          <span class="legend-dot" style="background:var(--moss)"></span>
+          <div class="legend-body">
+            <div class="legend-entry-title">proposals</div>
+            <div class="legend-entry-desc">Actions the organism suggests based on genes, sensors, and network signals. Water to reward, prune to discourage — it learns.</div>
+          </div>
+        </div>
+        <div class="legend-entry">
+          <span class="legend-dot" style="background:var(--decay)"></span>
+          <div class="legend-body">
+            <div class="legend-entry-title">feedback</div>
+            <div class="legend-entry-desc">Your accept/reject history and how each choice changed fitness. This is the learning signal that shapes future behavior.</div>
+          </div>
+        </div>
+        <div class="legend-entry">
+          <span class="legend-dot" style="background:var(--lichen)"></span>
+          <div class="legend-body">
+            <div class="legend-entry-title">seeds</div>
+            <div class="legend-entry-desc">Save or load genome strains as text. Starter strains have different personalities: Balanced, Aggressive, Explorer.</div>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 
   const g = (id: string) => document.getElementById(id)!;

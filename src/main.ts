@@ -4,7 +4,6 @@ import { ForestCanvas } from "./ui/organism-canvas";
 import { ForestControls } from "./ui/controls";
 import { Sparkline } from "./ui/sparkline";
 import { SeedBank } from "./ui/stats-overlay";
-import { LegendPanel } from "./ui/legend-panel";
 import { PeerManager } from "./network/peer-manager";
 import { GeneTransfer } from "./network/gene-transfer";
 import { StigmergyField } from "./network/stigmergy";
@@ -98,7 +97,20 @@ async function main(): Promise<void> {
 
   const forest = new ForestCanvas(ui.canvas);
   const controls = new ForestControls(ui.leafPause, ui.stepBtn, ui.speedSlider, ui.speedLabel);
-  new LegendPanel(document.getElementById("legend-trigger")!);
+
+  // Click title to toggle the grove legend panel
+  const legendPanel = document.getElementById("legend-panel")!;
+  const legendOverlay = document.getElementById("legend-overlay")!;
+  function toggleLegend(v?: boolean): void {
+    const show = v ?? !legendPanel.classList.contains("visible");
+    legendPanel.classList.toggle("visible", show);
+    legendOverlay.classList.toggle("visible", show);
+  }
+  ui.titleText.style.cursor = "pointer";
+  ui.titleText.title = "what is this?";
+  ui.titleText.addEventListener("click", () => toggleLegend());
+  legendOverlay.addEventListener("click", () => toggleLegend(false));
+  legendPanel.querySelector("#legend-close")?.addEventListener("click", () => toggleLegend(false));
   const sparkline = new Sparkline();
   const seedBank = new SeedBank(document.getElementById("seed-grid")!);
 
