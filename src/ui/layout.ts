@@ -57,7 +57,7 @@ export function createLayout(): LayoutElements {
         <span class="stat-label">exchanges</span><span class="stat-val" id="box-hgt-val">0</span>
       </div>
     </div>
-    <div id="peer-list-box" class="fbox data-box" style="top:100px;left:230px;max-width:280px;max-height:120px;overflow-y:auto;">
+    <div id="peer-list-box" class="fbox data-box" style="top:200px;right:16px;max-width:280px;max-height:120px;overflow-y:auto;">
       <div class="box-title">mesh</div>
       <div id="peer-list"><span class="box-hint" style="margin:0">no peers yet</span></div>
     </div>
