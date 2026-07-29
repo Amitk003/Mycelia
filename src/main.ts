@@ -4,6 +4,7 @@ import { ForestCanvas } from "./ui/organism-canvas";
 import { ForestControls } from "./ui/controls";
 import { Sparkline } from "./ui/sparkline";
 import { SeedBank } from "./ui/stats-overlay";
+import { LegendPanel } from "./ui/legend-panel";
 import { PeerManager } from "./network/peer-manager";
 import { GeneTransfer } from "./network/gene-transfer";
 import { StigmergyField } from "./network/stigmergy";
@@ -97,6 +98,7 @@ async function main(): Promise<void> {
 
   const forest = new ForestCanvas(ui.canvas);
   const controls = new ForestControls(ui.leafPause, ui.stepBtn, ui.speedSlider, ui.speedLabel);
+  new LegendPanel(ui.legendTrigger);
   const sparkline = new Sparkline();
   const seedBank = new SeedBank(document.getElementById("seed-grid")!);
 

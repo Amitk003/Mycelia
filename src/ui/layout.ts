@@ -28,6 +28,7 @@ export interface LayoutElements {
   // Overlays
   tooltip: HTMLElement;
   toast: HTMLElement;
+  legendTrigger: HTMLElement;
   strainIO: HTMLElement;
   strainInput: HTMLInputElement;
 }
@@ -40,7 +41,7 @@ export function createLayout(): LayoutElements {
     <!-- Top row — title + stats + weather on the same level -->
     <div id="top-row">
       <div id="title-box" class="fbox">
-        <h1 id="title-text">mycelia</h1>
+        <h1 id="title-text">mycelia <span id="legend-trigger">?</span></h1>
         <div id="title-status">waking...</div>
       </div>
       <div id="box-stats" class="fbox stats-combined">
@@ -179,6 +180,7 @@ export function createLayout(): LayoutElements {
     toast: g("toast"),
     strainIO: g("strain-io"),
     strainInput: g("strain-input") as HTMLInputElement,
+    legendTrigger: g("legend-trigger"),
   };
   return els;
 }
