@@ -40,7 +40,7 @@ export function createLayout(): LayoutElements {
     <!-- Top row — title + stats + weather on the same level -->
     <div id="top-row">
       <div id="title-box" class="fbox">
-        <h1 id="title-text">mycelia</h1>
+        <h1 id="title-text">mycelia <span class="info-icon" data-info="branches are genes · mushrooms are proposals · colored glows = pheromones from peers · bottom bar = fitness">?</span></h1>
         <div id="title-status">waking...</div>
       </div>
       <div id="box-stats" class="fbox stats-combined">
@@ -58,7 +58,7 @@ export function createLayout(): LayoutElements {
         </div>
       </div>
       <div id="box-weather" class="fbox data-box">
-        <div class="box-title">environment</div>
+        <div class="box-title">environment <span class="info-icon" data-info="live weather from open-meteo · extremes reduce fitness · pheromones = signals shared across the mesh">?</span></div>
         <div class="box-grid">
           <span class="box-label">condition</span><span class="box-val" id="wb-cond">—</span>
           <span class="box-label">temperature</span><span class="box-val" id="wb-temp">—</span>
@@ -76,13 +76,13 @@ export function createLayout(): LayoutElements {
     </div>
 
     <div id="peer-list-box" class="fbox data-box">
-      <div class="box-title">mesh</div>
+      <div class="box-title">mesh <span class="info-icon" data-info="other mycelia instances over webrtc · they exchange genes & broadcast pheromones · no central server">?</span></div>
       <div id="peer-list"><span class="box-hint" style="margin:0">no peers yet</span></div>
     </div>
 
     <!-- Sensors box — below title on left side -->
     <div id="box-sensors" class="fbox data-box">
-      <div class="box-title">senses</div>
+      <div class="box-title">senses <span class="info-icon" data-info="camera (brightness, motion) · mic (ambient volume) · device orientation (tilt) · all stays on your device">?</span></div>
       <div class="box-grid">
         <span class="box-label">brightness</span><span class="box-val" id="sb-bright">0.00</span>
         <span class="box-label">motion</span><span class="box-val" id="sb-motion">0.00</span>
@@ -101,14 +101,14 @@ export function createLayout(): LayoutElements {
 
     <!-- Proposals box — bottom left -->
     <div id="box-proposals" class="fbox data-box">
-      <div class="box-title">proposals <span id="prop-count"></span></div>
+      <div class="box-title">proposals <span class="info-icon" data-info="actions from genes + sensors + network · water rewards, prune discourages · it learns from you">?</span> <span id="prop-count"></span></div>
       <div id="prop-list">waiting for evolution...</div>
       <div class="box-hint">organism suggests actions — you choose</div>
     </div>
 
     <!-- Feedback box — bottom right -->
     <div id="box-feedback" class="fbox data-box">
-      <div class="box-title">feedback</div>
+      <div class="box-title">feedback <span class="info-icon" data-info="your accept/reject history · each choice changes fitness · this is how the organism learns">?</span></div>
       <div id="fb-list">no feedback yet</div>
       <div class="box-hint">accept/reject changes fitness — it learns from you</div>
     </div>
@@ -118,24 +118,17 @@ export function createLayout(): LayoutElements {
     <div id="welcome-box" class="fbox">
       <h2>Welcome to Mycelia</h2>
       <p>
-        A living digital organism growing in your browser. It evolves, senses your environment, connects to other browsers, and learns from your feedback.
+        A living digital organism growing inside your browser. It evolves in real-time, senses the world through your camera and microphone, connects to other browsers over a peer-to-peer mesh, and exchanges genetic material.
       </p>
-      <div id="welcome-grid">
-        <div><span class="wg-dot" style="background:var(--gold)"></span>the organism — branches are genes, mushrooms are proposals</div>
-        <div><span class="wg-dot" style="background:var(--mycelium)"></span>stats — generation, fitness, peers on the mesh</div>
-        <div><span class="wg-dot" style="background:var(--lichen)"></span>senses — camera brightness, mic ambient, device tilt</div>
-        <div><span class="wg-dot" style="background:var(--amber)"></span>weather — live conditions affect the organism</div>
-        <div><span class="wg-dot" style="background:var(--moss-glow)"></span>mesh — other instances connected over webrtc</div>
-        <div><span class="wg-dot" style="background:var(--moss)"></span>proposals — actions the organism suggests</div>
-        <div><span class="wg-dot" style="background:var(--decay)"></span>feedback — your choices shape its behavior</div>
-        <div><span class="wg-dot" style="background:var(--lichen)"></span>seeds — save and load genome strains</div>
-      </div>
+      <p style="color:var(--mycelium-dim);font-size:0.9rem;">
+        It proposes actions, learns from your feedback, and responds to live weather data. No pre-trained model — just evolution.
+      </p>
       <button id="welcome-enter">enter</button>
     </div>
 
     <!-- Seeds — bottom center -->
     <div id="box-seeds" class="fbox">
-      <div class="box-title">seeds</div>
+      <div class="box-title">seeds <span class="info-icon" data-info="save/load genome strains as text · starters: balanced, aggressive, explorer · each grows differently">?</span></div>
       <div id="seed-grid"></div>
       <div id="strain-io">
         <input id="strain-input" type="text" placeholder="paste strain..." />

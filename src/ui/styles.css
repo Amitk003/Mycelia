@@ -240,6 +240,23 @@ html, body {
 }
 #toast.visible { opacity: 1; transform: translate(-50%,-50%) scale(1); }
 
+/* Info icons */
+.info-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border-radius: 50%;
+  font-family: var(--font-data); font-size: 0.65rem; font-weight: 600;
+  color: var(--mycelium-faint); background: rgba(120,140,100,0.08);
+  border: 1px solid rgba(120,140,100,0.15);
+  cursor: help; vertical-align: middle; margin-left: 5px;
+  transition: all 0.2s;
+  line-height: 1;
+}
+.info-icon:hover {
+  color: var(--gold); border-color: var(--gold);
+  background: rgba(196,162,53,0.1);
+  box-shadow: 0 0 10px rgba(196,162,53,0.12);
+}
+
 /* Scrollbar global */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -260,7 +277,7 @@ html, body {
 #welcome-box {
   position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
   z-index: 100; text-align: center;
-  padding: 36px 44px; max-width: 480px;
+  padding: 40px 50px; max-width: 440px;
   opacity: 0; pointer-events: none;
   transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22,1,0.36,1);
   transform: translate(-50%, -48%);
@@ -277,20 +294,6 @@ html, body {
   font-family: var(--font-body); font-size: 1rem;
   color: var(--mycelium); line-height: 1.7;
   margin-bottom: 14px;
-}
-
-#welcome-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px;
-  text-align: left; margin-bottom: 16px;
-}
-#welcome-grid > div {
-  font-family: var(--font-body); font-size: 0.78rem;
-  color: var(--mycelium-dim); line-height: 1.5;
-  display: flex; align-items: center; gap: 7px;
-}
-.wg-dot {
-  flex-shrink: 0; width: 7px; height: 7px;
-  border-radius: 50%;
 }
 #welcome-enter {
   font-family: var(--font-display); font-size: 1.1rem;
