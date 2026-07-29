@@ -10,7 +10,7 @@ export interface PeerManagerEvents {
 
 export class PeerManager {
   private signalingClient: SignalingClient;
-  private peers: Map<string, { connection: SimplePeer.Instance; info: PeerInfo }> = new Map();
+  private peers: Map<string, { connection: SimplePeer.Instance; info: PeerInfo | null }> = new Map();
   private myPeerId = "";
   private events: PeerManagerEvents;
   private state: ConnectionState = "disconnected";
@@ -63,7 +63,7 @@ export class PeerManager {
   getPeers(): Map<string, PeerInfo> {
     const result = new Map<string, PeerInfo>();
     for (const [id, { info }] of this.peers) {
-      result.set(id, info);
+      if (info) result.set(id, info);
     }
     return result;
   }
@@ -75,7 +75,8 @@ export class PeerManager {
   broadcast(packet: NetworkPacket): void {
     packet.sourcePeerId = this.myPeerId;
     const payload = JSON.stringify(packet);
-    for (const [peerId, { connection }] of this.peers) {
+    for (const [peerId, { connection, info }] of this.peers) {
+      if (!info) continue;
       try {
         if (connection && !connection.destroyed) {
           connection.send(payload);
@@ -89,22 +90,25 @@ export class PeerManager {
 
   private initiateConnection(peerId: string): void {
     const connection = new SimplePeer({ initiator: true, trickle: false });
+    this.peers.set(peerId, { connection, info: null });
 
     connection.on("signal", (signal: string) => {
       this.signalingClient.sendSignal(peerId, JSON.stringify(signal));
     });
 
     connection.on("connect", () => {
-      const info: PeerInfo = {
-        peerId,
-        connectedAt: Date.now(),
-        signalStrength: 1.0,
-        geneCount: 0,
-        fitness: 0,
-        generation: 0,
-      };
-      this.peers.set(peerId, { connection, info });
-      this.events.onPeersChanged(this.getPeers());
+      const entry = this.peers.get(peerId);
+      if (entry) {
+        entry.info = {
+          peerId,
+          connectedAt: Date.now(),
+          signalStrength: 1.0,
+          geneCount: 0,
+          fitness: 0,
+          generation: 0,
+        };
+        this.events.onPeersChanged(this.getPeers());
+      }
     });
 
     connection.on("data", (data: Uint8Array | string) => {
@@ -128,8 +132,6 @@ export class PeerManager {
   }
 
   private handleIncomingSignal(from: string, signal: string): void {
-    if (this.peers.has(from)) return;
-
     let parsedSignal: string | SimplePeer.SignalData;
     try {
       parsedSignal = JSON.parse(signal);
@@ -137,23 +139,36 @@ export class PeerManager {
       parsedSignal = signal;
     }
 
+    const existing = this.peers.get(from);
+    if (existing) {
+      try {
+        existing.connection.signal(parsedSignal);
+      } catch (err) {
+        console.error(`Failed to signal existing connection for ${from}:`, err);
+      }
+      return;
+    }
+
     const connection = new SimplePeer({ initiator: false, trickle: false });
+    this.peers.set(from, { connection, info: null });
 
     connection.on("signal", (signal: string) => {
       this.signalingClient.sendSignal(from, JSON.stringify(signal));
     });
 
     connection.on("connect", () => {
-      const info: PeerInfo = {
-        peerId: from,
-        connectedAt: Date.now(),
-        signalStrength: 1.0,
-        geneCount: 0,
-        fitness: 0,
-        generation: 0,
-      };
-      this.peers.set(from, { connection, info });
-      this.events.onPeersChanged(this.getPeers());
+      const entry = this.peers.get(from);
+      if (entry) {
+        entry.info = {
+          peerId: from,
+          connectedAt: Date.now(),
+          signalStrength: 1.0,
+          geneCount: 0,
+          fitness: 0,
+          generation: 0,
+        };
+        this.events.onPeersChanged(this.getPeers());
+      }
     });
 
     connection.on("data", (data: Uint8Array | string) => {
