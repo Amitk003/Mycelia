@@ -1,0 +1,245 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --soil: #0d0f0a;
+  --soil-mid: #1a1d16;
+  --bark: #2a2520;
+  --lichen: #5a6b4a;
+  --moss: #4a6741;
+  --moss-glow: #6ba35a;
+  --gold: #c4a235;
+  --amber: #d4a04a;
+  --mycelium: #e8e0d0;
+  --mycelium-dim: #b0a898;
+  --mycelium-faint: #7a7570;
+  --decay: #8b3a3a;
+  --font-display: 'EB Garamond', 'Georgia', serif;
+  --font-body: 'Crimson Text', 'Georgia', serif;
+  --font-data: 'IBM Plex Mono', 'Consolas', monospace;
+  --box-bg: rgba(18, 22, 14, 0.88);
+  --box-border: rgba(120, 140, 100, 0.25);
+}
+
+html, body {
+  height: 100%; background: var(--soil); color: var(--mycelium);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  overflow: hidden; -webkit-font-smoothing: antialiased;
+}
+
+#app { width: 100%; height: 100%; position: relative; overflow: hidden; }
+
+/* Canvas is the background — full screen organism */
+#forest-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+
+/* ===== FLOATING BOXES (shelf-fungi growing from the organism) ===== */
+.fbox {
+  position: absolute; z-index: 10;
+  background: var(--box-bg);
+  border: 1px solid var(--box-border);
+  border-radius: 14px;
+  padding: 14px 18px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  pointer-events: auto;
+  transition: transform 0.2s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.fbox:hover {
+  box-shadow: 0 6px 32px rgba(0, 0, 0, 0.6), 0 0 24px rgba(90, 107, 74, 0.12);
+  border-color: rgba(120, 140, 100, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Title box — top left */
+#title-box { top: 16px; left: 16px; border-radius: 18px; padding: 16px 22px; min-height: 76px; display: flex; flex-direction: column; justify-content: center; }
+#title-text {
+  font-family: var(--font-display); font-size: 1.8rem; font-weight: 500;
+  color: var(--gold); letter-spacing: 0.04em;
+  text-shadow: 0 1px 8px rgba(196, 162, 53, 0.3);
+}
+#title-status {
+  font-family: var(--font-data); font-size: 0.82rem;
+  color: var(--moss-glow); margin-top: 3px; letter-spacing: 0.05em;
+  text-shadow: 0 1px 6px rgba(107, 163, 90, 0.25);
+  animation: statusPulse 3s ease-in-out infinite;
+}
+@keyframes statusPulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+/* Stats box — horizontal row, same height as title */
+#box-stats {
+  top: 16px; left: 230px; padding: 16px 22px;
+  min-height: 76px; border-radius: 18px;
+  display: flex; align-items: center; gap: 24px;
+}
+.stats-combined .stats-row {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 70px;
+}
+.stats-combined .stat-label { font-size: 0.7rem; }
+.stats-combined .stat-val { font-size: 1.2rem; margin-top: 0; }
+
+/* Stat label & value */
+.stat-label {
+  font-family: var(--font-body); font-size: 0.72rem;
+  color: var(--mycelium-dim); letter-spacing: 0.04em; text-transform: lowercase;
+}
+.stat-val {
+  font-family: var(--font-data); font-size: 1rem;
+  font-weight: 500; color: var(--mycelium);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.stat-val.accent { color: var(--gold); text-shadow: 0 1px 6px rgba(196,162,53,0.25); }
+
+/* Data boxes */
+.data-box { min-width: 200px; max-width: 320px; }
+.box-title {
+  font-family: var(--font-display); font-size: 1.05rem; font-weight: 500;
+  color: var(--gold); letter-spacing: 0.03em; margin-bottom: 8px;
+  border-bottom: 1px solid rgba(120, 140, 100, 0.18); padding-bottom: 6px;
+}
+.box-grid { display: grid; grid-template-columns: auto auto; gap: 3px 14px; }
+.box-label { font-family: var(--font-body); font-size: 0.88rem; color: var(--mycelium-dim); }
+.box-val { font-family: var(--font-data); font-size: 0.92rem; color: var(--mycelium); text-align: right; }
+.box-hint {
+  font-family: var(--font-body); font-size: 0.75rem; font-style: italic;
+  color: var(--mycelium-faint); margin-top: 8px; line-height: 1.35; opacity: 0.8;
+}
+
+/* === LAYOUT === */
+/* Left column */
+#box-sensors { left: 16px; top: 130px; }
+#box-proposals { left: 16px; bottom: 16px; max-width: 400px; max-height: 260px; overflow-y: auto; }
+
+/* Right column */
+#box-weather { right: 16px; top: 16px; }
+#box-feedback { right: 16px; bottom: 16px; min-width: 200px; }
+#box-seeds { left: 50%; transform: translateX(-50%); bottom: 16px; text-align: center; }
+
+/* Proposal items */
+.prop-item {
+  padding: 10px 12px; margin-bottom: 8px;
+  background: rgba(42, 37, 32, 0.45);
+  border-left: 3px solid var(--lichen); border-radius: 0 8px 8px 0;
+  transition: background 0.2s, border-left-color 0.2s;
+}
+.prop-item:hover { background: rgba(42, 37, 32, 0.65); border-left-color: var(--gold); }
+.prop-item-title { font-family: var(--font-body); font-size: 1rem; color: var(--mycelium); font-weight: 600; }
+.prop-item-desc { font-family: var(--font-body); font-size: 0.8rem; color: var(--mycelium-dim); margin-top: 3px; line-height: 1.35; }
+.prop-item-foot { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.prop-item-conf { font-family: var(--font-data); font-size: 0.75rem; color: var(--gold); }
+.prop-btn-accept, .prop-btn-reject {
+  font-family: var(--font-data); font-size: 0.72rem; padding: 4px 14px;
+  border: 1px solid rgba(255,255,255,0.08); background: none; cursor: pointer;
+  border-radius: 6px; transition: all 0.15s;
+}
+.prop-btn-accept { color: var(--moss-glow); border-color: rgba(107,163,90,0.3); }
+.prop-btn-accept:hover { background: rgba(107,163,90,0.15); }
+.prop-btn-reject { color: var(--decay); border-color: rgba(139,58,58,0.3); }
+.prop-btn-reject:hover { background: rgba(139,58,58,0.15); }
+.prop-btn-accept:active, .prop-btn-reject:active { transform: scale(0.96); }
+
+/* Scrollbar */
+#box-proposals::-webkit-scrollbar { width: 3px; }
+#box-proposals::-webkit-scrollbar-track { background: transparent; }
+#box-proposals::-webkit-scrollbar-thumb { background: var(--lichen); border-radius: 2px; }
+
+/* Feedback */
+.fb-item { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.88rem; }
+.fb-action-accepted { color: var(--moss-glow); font-weight: 600; }
+.fb-action-rejected { color: var(--decay); font-weight: 600; }
+.fb-category { color: var(--mycelium-faint); }
+.fb-fit-change { color: var(--mycelium-dim); margin-left: auto; font-family: var(--font-data); font-size: 0.75rem; }
+
+/* Seeds */
+.seed-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 8px; }
+.seed {
+  display: flex; flex-direction: column; align-items: center; cursor: pointer;
+  padding: 6px 12px; background: rgba(42,37,32,0.35); border: 1px solid rgba(90,107,74,0.15);
+  border-radius: 10px; transition: all 0.2s;
+}
+.seed:hover { border-color: var(--gold); background: rgba(42,37,32,0.55); }
+.seed-dot { width: 8px; height: 10px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: var(--lichen); margin-bottom: 4px; }
+.seed-name { font-family: var(--font-body); font-size: 0.72rem; color: var(--mycelium-faint); }
+
+/* Strain I/O */
+#strain-io { display: flex; gap: 6px; align-items: center; justify-content: center; margin-top: 6px; }
+#strain-io input {
+  background: var(--soil-mid); border: 1px solid var(--bark); color: var(--mycelium);
+  font-family: var(--font-data); font-size: 0.78rem; padding: 5px 10px; border-radius: 6px; outline: none; width: 180px;
+}
+#strain-io input:focus { border-color: var(--lichen); }
+#strain-io input::placeholder { color: var(--mycelium-faint); }
+.fbox-btn {
+  font-family: var(--font-data); font-size: 0.68rem; color: var(--mycelium-dim);
+  background: none; border: 1px solid var(--bark); padding: 5px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+}
+.fbox-btn:hover { color: var(--gold); border-color: var(--lichen); }
+.fbox-btn:active { transform: scale(0.96); }
+
+/* Leaf pause */
+#leaf-pause {
+  position: absolute; bottom: 18px; right: 18px; z-index: 10;
+  width: 36px; height: 36px; cursor: pointer; opacity: 0.5;
+  transition: opacity 0.3s, transform 0.3s;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+}
+#leaf-pause:hover { opacity: 0.8; transform: rotate(-5deg) scale(1.1); }
+#leaf-pause.paused { opacity: 1; transform: rotate(15deg) scale(1.15); }
+
+/* Rain control */
+#rain-control {
+  position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+  z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  opacity: 0.4; transition: opacity 0.3s;
+}
+#rain-control:hover { opacity: 0.8; }
+#rain-control label { font-family: var(--font-data); font-size: 0.6rem; color: var(--mycelium-faint); }
+#rain-slider { -webkit-appearance: none; width: 80px; height: 2px; background: var(--bark); border-radius: 1px; outline: none; }
+#rain-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 8px; height: 8px; border-radius: 50%; background: var(--lichen); cursor: pointer; }
+#rain-speed { font-family: var(--font-data); font-size: 0.6rem; color: var(--mycelium-faint); }
+
+/* Tooltip */
+#organic-tooltip {
+  position: absolute; z-index: 50; pointer-events: none; opacity: 0;
+  transform: scale(0.85) translateY(6px); transition: opacity 0.25s, transform 0.25s cubic-bezier(0.22,1,0.36,1);
+}
+#organic-tooltip.visible { opacity: 1; transform: scale(1) translateY(0); }
+.tooltip-leaf {
+  background: var(--soil-mid); border: 1px solid rgba(90,107,74,0.25);
+  border-radius: 4px 14px 14px 14px; padding: 10px 14px; max-width: 220px;
+}
+.tt-title { font-family: var(--font-body); font-size: 0.9rem; color: var(--mycelium); font-weight: 600; }
+.tt-value { font-family: var(--font-data); font-size: 0.78rem; color: var(--gold); margin-top: 2px; }
+.tt-extra { font-family: var(--font-body); font-size: 0.72rem; color: var(--mycelium-faint); margin-top: 3px; }
+
+/* Toast */
+#toast {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(0.8);
+  z-index: 60; pointer-events: none; opacity: 0;
+  transition: opacity 0.3s, transform 0.3s cubic-bezier(0.22,1,0.36,1);
+  font-family: var(--font-display); font-size: 1.4rem; font-style: italic;
+  color: var(--gold); text-shadow: 0 2px 16px rgba(196, 162, 53, 0.4), 0 0 30px rgba(196, 162, 53, 0.15);
+  padding: 12px 24px;
+  background: rgba(13, 15, 10, 0.9);
+  border: 1px solid rgba(196, 162, 53, 0.2);
+  border-radius: 12px;
+}
+#toast.visible { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+
+/* Scrollbar global */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bark); border-radius: 2px; }
+::selection { background: rgba(196,162,53,0.25); color: var(--mycelium); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  #box-stats { left: 16px; top: 105px; }
+  .data-box { max-width: 240px; }
+  #box-proposals { max-width: 280px; }
+  #box-sensors { top: 140px; }
+  #box-feedback { min-width: 160px; }
+}
