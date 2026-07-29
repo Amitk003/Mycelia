@@ -79,6 +79,21 @@ function updateFeedback(entries: Array<{ action: string; category: string; previ
 
 async function main(): Promise<void> {
   const ui = createLayout();
+
+  // Welcome box for first-time visitors
+  const welcomeBox = document.getElementById("welcome-box");
+  const welcomeOverlay = document.getElementById("welcome-overlay");
+  const welcomeEnter = document.getElementById("welcome-enter");
+  if (welcomeBox && welcomeOverlay && welcomeEnter && !localStorage.getItem("mycelia_visited")) {
+    welcomeOverlay.classList.add("visible");
+    welcomeBox.classList.add("visible");
+    welcomeEnter.addEventListener("click", () => {
+      welcomeBox.classList.remove("visible");
+      welcomeOverlay.classList.remove("visible");
+      localStorage.setItem("mycelia_visited", "1");
+    });
+  }
+
   const forest = new ForestCanvas(ui.canvas);
   const controls = new ForestControls(ui.leafPause, ui.rainSlider, ui.rainSpeed);
   const sparkline = new Sparkline();

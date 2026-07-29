@@ -122,7 +122,7 @@ export class ForestCanvas {
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
-        const n = rand() * 10, v = 12 + n;
+        const n = rand() * 10, v = 18 + n;
         data[i] = Math.max(0, Math.min(255, v + 2));
         data[i + 1] = Math.max(0, Math.min(255, v + 3));
         data[i + 2] = Math.max(0, Math.min(255, v));
@@ -184,8 +184,7 @@ export class ForestCanvas {
     }
 
     // Ambient glow
-    const pulse = 1 + Math.sin(this.time * 0.6) * 0.08;
-    const gr = (50 + fitness * 40) * pulse;
+    const pulse = 1 + Math.sin(this.time * 0.6) * 0.08;      const gr = (70 + fitness * 60) * pulse;
     const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, gr);
     glow.addColorStop(0, `hsla(85, 40%, ${35 + fitness * 15}%, ${0.12 + fitness * 0.06})`);
     glow.addColorStop(1, "hsla(80, 20%, 20%, 0)");
@@ -207,7 +206,7 @@ export class ForestCanvas {
       const f0 = d[0];
       const baseAngle = (i / n) * Math.PI * 2;
       const angle = baseAngle + f0 * 0.8 + Math.sin(t * 0.4 + i) * 0.12;
-      const len = 30 + (avg + 1) * 28 + Math.sin(t * 0.25 + i + generation * 0.015) * 10;
+      const len = 45 + (avg + 1) * 40 + Math.sin(t * 0.25 + i + generation * 0.015) * 15;
       const curveStrength = (vari + 0.1) * 25 + Math.sin(t * 0.3 + i * 2) * 8;
       const cp1x = cx + Math.cos(angle + curveStrength * 0.02) * len * 0.35;
       const cp1y = cy + Math.sin(angle + curveStrength * 0.02) * len * 0.35;
@@ -259,7 +258,7 @@ export class ForestCanvas {
     }
 
     // Center body
-    const bodyR = 7 + fitness * 5 + Math.sin(t * 0.8) * 0.8;
+    const bodyR = 10 + fitness * 8 + Math.sin(t * 0.8) * 1.2;
     const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, bodyR * 2.5);
     halo.addColorStop(0, `hsla(82, 35%, ${32 + fitness * 12}%, 0.08)`);
     halo.addColorStop(1, "hsla(80, 20%, 20%, 0)");

@@ -1,23 +1,23 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --soil: #0d0f0a;
-  --soil-mid: #1a1d16;
-  --bark: #2a2520;
+  --soil: #141a10;
+  --soil-mid: #1e261a;
+  --bark: #323828;
   --lichen: #5a6b4a;
   --moss: #4a6741;
   --moss-glow: #6ba35a;
   --gold: #c4a235;
   --amber: #d4a04a;
-  --mycelium: #e8e0d0;
-  --mycelium-dim: #b0a898;
-  --mycelium-faint: #7a7570;
+  --mycelium: #f0ebe0;
+  --mycelium-dim: #c4baa8;
+  --mycelium-faint: #908878;
   --decay: #8b3a3a;
   --font-display: 'EB Garamond', 'Georgia', serif;
   --font-body: 'Crimson Text', 'Georgia', serif;
   --font-data: 'IBM Plex Mono', 'Consolas', monospace;
-  --box-bg: rgba(18, 22, 14, 0.88);
-  --box-border: rgba(120, 140, 100, 0.25);
+  --box-bg: rgba(22, 30, 18, 0.92);
+  --box-border: rgba(120, 140, 100, 0.35);
 }
 
 html, body {
@@ -234,6 +234,50 @@ html, body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--bark); border-radius: 2px; }
 ::selection { background: rgba(196,162,53,0.25); color: var(--mycelium); }
+
+/* Welcome box */
+#welcome-overlay {
+  position: fixed; inset: 0; z-index: 99;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+#welcome-overlay.visible { opacity: 1; pointer-events: auto; }
+
+#welcome-box {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 100; text-align: center;
+  padding: 40px 50px; max-width: 440px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22,1,0.36,1);
+  transform: translate(-50%, -48%);
+}
+#welcome-box.visible {
+  opacity: 1; pointer-events: auto;
+  transform: translate(-50%, -50%);
+}
+#welcome-box h2 {
+  font-family: var(--font-display); font-size: 2rem;
+  color: var(--gold); margin-bottom: 12px;
+}
+#welcome-box p {
+  font-family: var(--font-body); font-size: 1rem;
+  color: var(--mycelium); line-height: 1.7;
+  margin-bottom: 14px;
+}
+#welcome-enter {
+  font-family: var(--font-display); font-size: 1.1rem;
+  color: var(--gold); background: rgba(196,162,53,0.1);
+  border: 1px solid rgba(196,162,53,0.35); padding: 10px 32px;
+  border-radius: 10px; cursor: pointer; transition: all 0.2s;
+  margin-top: 6px;
+}
+#welcome-enter:hover {
+  background: rgba(196,162,53,0.2); border-color: var(--gold);
+  box-shadow: 0 0 20px rgba(196,162,53,0.15);
+}
 
 /* Responsive */
 @media (max-width: 768px) {

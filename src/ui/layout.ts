@@ -113,6 +113,19 @@ export function createLayout(): LayoutElements {
       <div class="box-hint">accept/reject changes fitness — it learns from you</div>
     </div>
 
+    <!-- Welcome box — first-time visitors -->
+    <div id="welcome-overlay"></div>
+    <div id="welcome-box" class="fbox">
+      <h2>Welcome to Mycelia</h2>
+      <p>
+        A living digital organism growing inside your browser. It evolves in real-time, senses the world through your camera and microphone, connects to other browsers over a peer-to-peer mesh, and exchanges genetic material.
+      </p>
+      <p style="color:var(--mycelium-dim);font-size:0.9rem;">
+        It proposes actions, learns from your feedback, and responds to live weather data. No pre-trained model — just evolution.
+      </p>
+      <button id="welcome-enter">enter</button>
+    </div>
+
     <!-- Seeds — bottom center -->
     <div id="box-seeds" class="fbox">
       <div class="box-title">seeds</div>
